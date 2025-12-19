@@ -197,6 +197,8 @@ void initTasks() {
   initWebServer();
 }
 
+#include "network_manager.h"
+
 // --- GUI Logic ---
 
 enum UI_State {
@@ -206,6 +208,7 @@ enum UI_State {
     UI_MUSIC_PLAYER,
     UI_MENU_VIDEO,
     UI_VIDEO_PLAYER,
+    UI_MENU_ONLINE, // New Online Mode
     UI_SNAKE,
     UI_BREAKOUT,
     UI_FLAPPY,
@@ -218,10 +221,11 @@ static const char* main_menu_items[] = {
     "Music",
     "Video",
     "Games",
+    "Online", // New Item
     "Settings",
     "About"
 };
-static const int main_menu_count = 5;
+static const int main_menu_count = 6;
 
 static const char* games_menu_items[] = {
     "Snake",
@@ -816,6 +820,9 @@ static void guiTask(void* pvParameters) {
     // If calibration works (30000), Threshold 65000. Pressed (70000+) > 65000.
     const int TOUCH_DELTA = 35000; 
 
+    // Initialize Network
+    Network_Manager::init();
+
     UI_State ui_state = UI_MENU_MAIN;
     int menu_index = 0;
     int last_menu_index = -1;
@@ -910,7 +917,13 @@ static void guiTask(void* pvParameters) {
                     menu_index = 0; // Reset for submenu
                     last_menu_index = -1;
                     continue;
-                } else if (menu_index == 4) {
+                } else if (menu_index == 3) {
+                    ui_state = UI_MENU_ONLINE;
+                    Network_Manager::startDiscovery();
+                    menu_index = 0;
+                    last_menu_index = -1;
+                    continue;
+                } else if (menu_index == 5) {
                     ui_state = UI_ABOUT;
                     last_menu_index = -1; // Ensure redraw
                     continue;
@@ -1467,6 +1480,87 @@ static void guiTask(void* pvParameters) {
             if(read_buf) free(read_buf);
             Serial.println("Exited Video Loop");
             
+        } else if (ui_state == UI_MENU_ONLINE) {
+            // Update Network
+            Network_Manager::update();
+            
+            // Get Peers
+            int peer_count = Network_Manager::getPeerCount();
+            const PeerInfo* peers = Network_Manager::getPeers();
+            
+            // Navigation
+            if (enc_delta != 0) {
+                menu_index += enc_delta;
+                if (menu_index < 0) menu_index = peer_count; // +1 for Back
+                if (menu_index > peer_count) menu_index = 0;
+                rebuild = true;
+            }
+            
+            // Selection
+            if (btn_pressed) {
+                if (menu_index == peer_count) {
+                    ui_state = UI_MENU_MAIN;
+                    menu_index = 3; // Return to "Online" selection
+                    last_menu_index = -1;
+                    continue;
+                } else {
+                    // Pair with selected peer
+                    if(peer_count > 0 && menu_index < peer_count) {
+                        Network_Manager::pair(peers[menu_index].mac);
+                    }
+                }
+                rebuild = true;
+            }
+            
+            // Force redraw every 500ms to update status text
+            static unsigned long last_redraw = 0;
+            if (millis() - last_redraw > 500) {
+                rebuild = true;
+                last_redraw = millis();
+            }
+
+            if (rebuild || last_menu_index == -1) {
+                DRAW_Clear();
+                DRAW_AddRect(0, 0, 2047, 2047);
+                
+                DRAW_AddString("ONLINE MODE", 0, 600, 1900, 30, 30);
+                
+                // Show Status
+                NetState state = Network_Manager::getState();
+                const char* status_str = "IDLE";
+                if(state == NET_DISCOVERING) status_str = "SCANNING...";
+                else if(state == NET_PAIRING) status_str = "PAIRING...";
+                else if(state == NET_CONNECTED) status_str = "CONNECTED";
+                
+                DRAW_AddString(status_str, 0, 50, 1800, 20, 20);
+                
+                int start_y = 1600;
+                int spacing = 200;
+                int scale = 25;
+                
+                // List Peers
+                for(int i=0; i<peer_count; i++) {
+                    int y = start_y - (i * spacing);
+                    
+                    if(i == menu_index) {
+                        DRAW_AddString(">", 0, 50, y, scale, scale);
+                    }
+                    
+                    char peer_str[32];
+                    sprintf(peer_str, "PEER %02X:%02X", peers[i].mac[4], peers[i].mac[5]);
+                    DRAW_AddString(peer_str, 0, 200, y, scale, scale);
+                }
+                
+                // Back Option
+                int back_y = start_y - (peer_count * spacing);
+                if(menu_index == peer_count) {
+                    DRAW_AddString(">", 0, 50, back_y, scale, scale);
+                }
+                DRAW_AddString("BACK", 0, 200, back_y, scale, scale);
+                
+                last_menu_index = menu_index;
+            }
+
         } else if (ui_state == UI_SNAKE) {
             // Exit
             if (btn_pressed) {
@@ -1770,11 +1864,11 @@ static void serialOutputTask(void* pvParameters) {
   for (;;) {
     if (millis() - lastOutputTime >= outputInterval) {
       lastOutputTime = millis();
-      Serial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
+      /* Serial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
         touchRead(TOUCH_UP), 
         touchRead(TOUCH_DOWN), 
         touchRead(TOUCH_LEFT), 
-        touchRead(TOUCH_RIGHT));
+        touchRead(TOUCH_RIGHT)); */
     }
     vTaskDelay(pdMS_TO_TICKS(50));
   }

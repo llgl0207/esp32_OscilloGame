@@ -83,7 +83,12 @@ void handleEnter() {
 }
 
 void webServerTask(void* pvParameters) {
-  WiFi.softAP("ESP32_Game_Controller#1", "12345678");
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char ssid[32];
+  sprintf(ssid, "ESP32_Game_%02X:%02X", mac[4], mac[5]);
+  
+  WiFi.softAP(ssid, "12345678");
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
