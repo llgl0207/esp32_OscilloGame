@@ -432,6 +432,9 @@ void _addRawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
 }
 
 void _addDmaPoint(int16_t x, int16_t y) {
+    // Filter invalid points
+    if (x < 0 || x > 2047 || y < 0 || y > 2047) return;
+
     if (dmaBuffers[backDmaIdx] && dmaBufferCounts[backDmaIdx] < dmaBufferCapacity) {
         dmaBuffers[backDmaIdx][dmaBufferCounts[backDmaIdx]++] = ((uint32_t)x << 16) | (uint16_t)y;
     }
@@ -462,9 +465,10 @@ void _processLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     // Clip to 12-bit DAC range (0-4095) roughly, or let it wrap?
     // For now, just cast back to int16_t.
     
-    // Boundary Check: Ignore lines that are completely out of bounds (0-2047)
-    if (tx0 < 0 || tx0 > 2047 || ty0 < 0 || ty0 > 2047 || 
-        tx1 < 0 || tx1 > 2047 || ty1 < 0 || ty1 > 2047) {
+    // Trivial Rejection: If both points are outside on the same side, discard.
+    // This allows lines that partially enter the screen or cross it.
+    if ((tx0 < 0 && tx1 < 0) || (tx0 > 2047 && tx1 > 2047) || 
+        (ty0 < 0 && ty1 < 0) || (ty0 > 2047 && ty1 > 2047)) {
         return;
     }
 
@@ -683,22 +687,60 @@ void IRAM_ATTR DRAW_GetNextPoint(uint16_t &outX, uint16_t &outY) {
         return;
     }
 
-    // 1. 输出当前点
-    outX = (uint16_t)(curr_x_fp >> 11);
-    outY = (uint16_t)(curr_y_fp >> 11);
+    // CPU Mode with Point Filtering
+    int points_checked = 0;
+    while (points_checked < 50) { // Limit checks to prevent ISR hang
+        points_checked++;
 
-    // 2. 计算下一点
-    if (steps_remaining == 0) {
-        // 切换到下一条线
-        currentLineIndex++;
-        uint16_t total = rawLineCounts[activeBufferIdx];
-        if (currentLineIndex >= total) {
-            currentLineIndex = 0;
+        // 1. Get current point (unscaled)
+        int16_t x = (int16_t)(curr_x_fp >> 16);
+        int16_t y = (int16_t)(curr_y_fp >> 16);
+        
+        bool point_valid = (x >= 0 && x <= 2047 && y >= 0 && y <= 2047);
+        
+        // 2. Advance logic
+        bool line_finished = false;
+        if (steps_remaining == 0) {
+            line_finished = true;
+        } else {
+            curr_x_fp += inc_x_fp;
+            curr_y_fp += inc_y_fp;
+            steps_remaining--;
         }
-        _resetLine(); 
-    } else {
-        curr_x_fp += inc_x_fp;
-        curr_y_fp += inc_y_fp;
-        steps_remaining--;
+
+        // 3. If valid, output and return
+        if (point_valid) {
+            outX = (uint16_t)(x << 5);
+            outY = (uint16_t)(y << 5);
+            
+            if (line_finished) {
+                currentLineIndex++;
+                uint16_t total = rawLineCounts[activeBufferIdx];
+                if (currentLineIndex >= total) {
+                    currentLineIndex = 0;
+                }
+                _resetLine(); 
+            }
+            return;
+        }
+
+        // 4. If invalid, we skipped. Handle line finish.
+        if (line_finished) {
+            currentLineIndex++;
+            uint16_t total = rawLineCounts[activeBufferIdx];
+            if (currentLineIndex >= total) {
+                currentLineIndex = 0;
+            }
+            _resetLine();
+            
+            // If buffer empty, break
+            if (rawLineCounts[activeBufferIdx] == 0) {
+                break;
+            }
+        }
     }
+    
+    // Fallback if no valid point found
+    outX = 32768;
+    outY = 32768;
 }

@@ -1502,7 +1502,7 @@ static void guiTask(void* pvParameters) {
                 DRAW_AddString("GAME OVER", 0, 500, 1100, 20, 20);
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", game_score);
-                DRAW_AddString(score_str, 0, 600, 800, 15, 15);
+                DRAW_AddString(score_str, 0, 300, 800, 30, 30);
             }
 
         } else if (ui_state == UI_BREAKOUT) {
@@ -1551,11 +1551,11 @@ static void guiTask(void* pvParameters) {
                 }
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", brk_score);
-                DRAW_AddString(score_str, 0, 600, 800, 15, 15);
+                DRAW_AddString(score_str, 0, 300, 800, 30, 30);
             } else {
                 char lives_str[16];
                 sprintf(lives_str, "L:%d", brk_lives);
-                DRAW_AddString(lives_str, 0, 50, 50, 10, 10);
+                DRAW_AddString(lives_str, 0, 50, 50, 30, 30);
             }
 
         } else if (ui_state == UI_FLAPPY) {
@@ -1620,11 +1620,11 @@ static void guiTask(void* pvParameters) {
                 DRAW_AddString("GAME OVER", 0, 500, 1100, 20, 20);
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", flp_score);
-                DRAW_AddString(score_str, 0, 600, 800, 15, 15);
+                DRAW_AddString(score_str, 0, 300, 800, 30, 30);
             } else {
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", flp_score);
-                DRAW_AddString(score_str, 0, 50, 1900, 10, 10);
+                DRAW_AddString(score_str, 0, 50, 1900, 20, 20);
             }
 
         } else if (ui_state == UI_RACING) {
@@ -1663,11 +1663,11 @@ static void guiTask(void* pvParameters) {
                 DRAW_AddString("GAME OVER", 0, 500, 1100, 20, 20);
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", race_score);
-                DRAW_AddString(score_str, 0, 600, 800, 15, 15);
+                DRAW_AddString(score_str, 0, 300, 800, 30, 30);
             } else {
                 char score_str[16];
                 sprintf(score_str, "%d", race_score);
-                DRAW_AddString(score_str, 0, 50, 1900, 10, 10);
+                DRAW_AddString(score_str, 0, 50, 1900, 20, 20);
             }
 
         } else if (ui_state == UI_RUNTINY) {
@@ -1729,11 +1729,11 @@ static void guiTask(void* pvParameters) {
                 DRAW_AddString("GAME OVER", 0, 500, 1100, 20, 20);
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", run_score);
-                DRAW_AddString(score_str, 0, 600, 800, 15, 15);
+                DRAW_AddString(score_str, 0, 300, 800, 30, 30);
             } else {
                 char score_str[16];
                 sprintf(score_str, "%d", run_score);
-                DRAW_AddString(score_str, 0, 50, 1900, 10, 10);
+                DRAW_AddString(score_str, 0, 50, 1900, 20, 20);
             }
 
         } else if (ui_state == UI_ABOUT) {
@@ -1748,9 +1748,9 @@ static void guiTask(void* pvParameters) {
                 DRAW_Clear();
                 DRAW_AddRect(50, 50, 1948, 1948);
                 DRAW_AddString("ABOUT", 0, 780, 1800, 17, 17);
-                DRAW_AddString("ESP32 VECTOR", 0, 610, 1300, 12, 12);
-                DRAW_AddString("DISPLAY SYSTEM", 0, 540, 1050, 12, 12);
-                DRAW_AddString("V1.0", 0, 885, 800, 12, 12);
+                DRAW_AddString("ESP32 VECTOR", 0, 610, 1300, 30, 30);
+                DRAW_AddString("DISPLAY SYSTEM", 0, 540, 1050, 30, 30);
+                DRAW_AddString("V1.0", 0, 885, 800, 30, 30);
                 last_menu_index = 0; // Mark as drawn
             }
         }
