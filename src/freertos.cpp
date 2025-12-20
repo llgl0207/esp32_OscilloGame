@@ -16,6 +16,10 @@ extern volatile int32_t encoderValue;
 // Task Handles
 static TaskHandle_t s_serialOutputTaskHandle = nullptr;
 static TaskHandle_t s_guiTaskHandle = nullptr;
+static TaskHandle_t s_joystickCheckTaskHandle = nullptr;
+
+// --- Joystick Status ---
+static bool is_joystick_connected = true;
 
 // --- Music Player Variables ---
 static std::vector<std::string> music_files;
@@ -188,8 +192,22 @@ static unsigned long last_fire_time = 0;
 // Task Functions
 static void serialOutputTask(void* pvParameters);
 static void guiTask(void* pvParameters);
+static void joystickCheckTask(void* pvParameters);
 
 void initTasks() {
+  // Create Joystick Check Task
+  if (!s_joystickCheckTaskHandle) {
+    xTaskCreatePinnedToCore(
+      joystickCheckTask,
+      "JoystickCheckTask",
+      2048,
+      nullptr,
+      1,
+      &s_joystickCheckTaskHandle,
+      1 // Core 1
+    );
+  }
+
   // Create Serial Output Task
   if (!s_serialOutputTaskHandle) {
     xTaskCreatePinnedToCore(
@@ -2348,22 +2366,22 @@ static void guiTask(void* pvParameters) {
                 }
             }
             
+            String status = "GAME: TANK\n";
+
             if(tank_game_over) {
-                String status = "GAME: TANK\n";
                 if(tank_game_over == 1) {
                     DRAW_AddString("YOU LOSE", 0, 600, 1100, 20, 20);
-                    status += "YOU LOSE";
+                    status += "YOU LOSE\n";
                 } else if(tank_game_over == 2) {
                     DRAW_AddString("NOT CONNECTED", 0, 400, 1100, 20, 20);
-                    status += "NOT CONNECTED";
+                    status += "NOT CONNECTED\n";
                 } else if(tank_game_over == 3) {
                     DRAW_AddString("OPPONENT LEFT", 0, 400, 1100, 20, 20);
-                    status += "OPPONENT LEFT";
+                    status += "OPPONENT LEFT\n";
                 } else if(tank_game_over == 4) {
                     DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
-                    status += "YOU WIN";
+                    status += "YOU WIN\n";
                 }
-                updateWebUIStatus(status);
                 
                 // Auto exit after 2 seconds
                 static unsigned long exit_timer = 0;
@@ -2376,8 +2394,16 @@ static void guiTask(void* pvParameters) {
                     Network_Manager::endGame(0);
                 }
             } else {
-                updateWebUIStatus("GAME: TANK\nPlaying...");
+                status += "Playing...\n";
             }
+
+            if(!is_joystick_connected) {
+                DRAW_AddString("JOYSTICK", 0, 400, 900, 20, 20);
+                DRAW_AddString("DISCONNECTED", 0, 400, 700, 20, 20);
+                status += "JOYSTICK DISCONNECTED\n";
+            }
+            
+            updateWebUIStatus(status);
 
         } else if (ui_state == UI_ABOUT) {
              if (btn_pressed) {
@@ -2422,4 +2448,34 @@ static void serialOutputTask(void* pvParameters) {
     }
     vTaskDelay(pdMS_TO_TICKS(50));
   }
+}
+
+static void joystickCheckTask(void* pvParameters) {
+    int consecutive_disconnects = 0;
+    
+    for(;;) {
+        int j1x = analogRead(JOY1_X);
+        int j1y = analogRead(JOY1_Y);
+        int j2x = analogRead(JOY2_X);
+        int j2y = analogRead(JOY2_Y);
+        
+        bool cond1 = (j1x >= 300 && j1x <= 700);
+        bool cond2 = (j1y >= 1 && j1y <= 200);
+        bool cond3 = (j2x >= 400 && j2x <= 1200);
+        bool cond4 = (j2y >= 1 && j2y <= 350);
+        
+        if(cond1 && cond2 && cond3 && cond4) {
+            consecutive_disconnects++;
+        } else {
+            consecutive_disconnects = 0;
+            is_joystick_connected = true;
+        }
+        
+        if(consecutive_disconnects >= 10) {
+            is_joystick_connected = false;
+            if(consecutive_disconnects > 20) consecutive_disconnects = 20; 
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 }
