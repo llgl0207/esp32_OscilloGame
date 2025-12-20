@@ -1134,6 +1134,10 @@ static void guiTask(void* pvParameters) {
     // Music state
     int music_scroll = 0;
     const int visible_lines = 5;
+    
+    // Main Menu state
+    int main_menu_scroll = 0;
+    const int main_menu_visible_lines = 5;
 
     // Flappy state
     bool last_touch_up = false;
@@ -1248,13 +1252,27 @@ static void guiTask(void* pvParameters) {
                 int spacing = 400;
                 int scale = 40; 
                 
-                for (int i = 0; i < main_menu_count; i++) {
+                // Calculate Scroll
+                if(menu_index < main_menu_scroll) main_menu_scroll = menu_index;
+                if(menu_index >= main_menu_scroll + main_menu_visible_lines) main_menu_scroll = menu_index - main_menu_visible_lines + 1;
+                
+                String status = "MENU: MAIN\n";
+                
+                for (int i = 0; i < main_menu_visible_lines; i++) {
+                    int item_idx = main_menu_scroll + i;
                     int y = start_y - (i * spacing);
-                    if (i == menu_index) {
-                        DRAW_AddString(">", 0, 50, y, scale, scale);
+                    
+                    if(item_idx < main_menu_count) {
+                        if (item_idx == menu_index) {
+                            DRAW_AddString(">", 0, 50, y, scale, scale);
+                            status += "> " + String(main_menu_items[item_idx]) + "\n";
+                        } else {
+                            status += "  " + String(main_menu_items[item_idx]) + "\n";
+                        }
+                        DRAW_AddString(main_menu_items[item_idx], 0, 250, y, scale, scale);
                     }
-                    DRAW_AddString(main_menu_items[i], 0, 250, y, scale, scale);
                 }
+                updateWebUIStatus(status);
                 last_menu_index = menu_index;
             }
             
@@ -1311,13 +1329,19 @@ static void guiTask(void* pvParameters) {
                 int spacing = 250;
                 int scale = 40; 
                 
+                String status = "MENU: GAMES\n";
+
                 for (int i = 0; i < games_menu_count; i++) {
                     int y = start_y - (i * spacing);
                     if (i == menu_index) {
                         DRAW_AddString(">", 0, 50, y, scale, scale);
+                        status += "> " + String(games_menu_items[i]) + "\n";
+                    } else {
+                        status += "  " + String(games_menu_items[i]) + "\n";
                     }
                     DRAW_AddString(games_menu_items[i], 0, 250, y, scale, scale);
                 }
+                updateWebUIStatus(status);
                 last_menu_index = menu_index;
             }
 
@@ -1363,6 +1387,8 @@ static void guiTask(void* pvParameters) {
                 if(menu_index < music_scroll) music_scroll = menu_index;
                 if(menu_index >= music_scroll + visible_lines) music_scroll = menu_index - visible_lines + 1;
                 
+                String status = "MENU: MUSIC\n";
+
                 for(int i=0; i<visible_lines; i++) {
                     int item_idx = music_scroll + i;
                     int y = start_y - (i * spacing);
@@ -1370,6 +1396,11 @@ static void guiTask(void* pvParameters) {
                     if(item_idx <= music_file_count) {
                         if(item_idx == menu_index) {
                             DRAW_AddString(">", 0, 50, y, scale, scale);
+                            if(item_idx == music_file_count) status += "> Back\n";
+                            else status += "> " + String(music_files[item_idx].c_str()) + "\n";
+                        } else {
+                            if(item_idx == music_file_count) status += "  Back\n";
+                            else status += "  " + String(music_files[item_idx].c_str()) + "\n";
                         }
                         
                         if(item_idx == music_file_count) {
@@ -1379,6 +1410,7 @@ static void guiTask(void* pvParameters) {
                         }
                     }
                 }
+                updateWebUIStatus(status);
                 last_menu_index = menu_index;
             }
 
@@ -1392,6 +1424,7 @@ static void guiTask(void* pvParameters) {
                 // Draw a simple "Playing" indicator
                 DRAW_AddString("PLAYING...", 0, 500, 1000, 20, 20);
                 DRAW_Update(); 
+                updateWebUIStatus("MUSIC PLAYER\nPlaying: " + String(music_files[menu_index].c_str()));
                 last_menu_index = 0;
                 // Removed "Wait for release" loop as we now enter on Release
             }
@@ -1621,6 +1654,8 @@ static void guiTask(void* pvParameters) {
                 if(menu_index < music_scroll) music_scroll = menu_index;
                 if(menu_index >= music_scroll + visible_lines) music_scroll = menu_index - visible_lines + 1;
                 
+                String status = "MENU: VIDEO\n";
+
                 for(int i=0; i<visible_lines; i++) {
                     int item_idx = music_scroll + i;
                     int y = start_y - (i * spacing);
@@ -1628,6 +1663,11 @@ static void guiTask(void* pvParameters) {
                     if(item_idx <= video_file_count) {
                         if(item_idx == menu_index) {
                             DRAW_AddString(">", 0, 50, y, scale, scale);
+                            if(item_idx == video_file_count) status += "> Back\n";
+                            else status += "> " + String(video_files[item_idx].c_str()) + "\n";
+                        } else {
+                            if(item_idx == video_file_count) status += "  Back\n";
+                            else status += "  " + String(video_files[item_idx].c_str()) + "\n";
                         }
                         
                         if(item_idx == video_file_count) {
@@ -1637,6 +1677,7 @@ static void guiTask(void* pvParameters) {
                         }
                     }
                 }
+                updateWebUIStatus(status);
                 last_menu_index = menu_index;
             }
 
@@ -1647,6 +1688,7 @@ static void guiTask(void* pvParameters) {
                 DRAW_Clear();
                 DRAW_AddString("PLAYING VIDEO...", 0, 500, 1000, 20, 20);
                 DRAW_Update(); 
+                updateWebUIStatus("VIDEO PLAYER\nPlaying: " + String(video_files[menu_index].c_str()));
                 last_menu_index = 0;
             }
             
@@ -1878,16 +1920,22 @@ static void guiTask(void* pvParameters) {
                 int spacing = 200;
                 int scale = 25;
                 
+                String status = "MENU: ONLINE\nStatus: " + String(status_str) + "\n";
+
                 // List Peers
                 for(int i=0; i<peer_count; i++) {
                     int y = start_y - (i * spacing);
                     
-                    if(i == menu_index) {
-                        DRAW_AddString(">", 0, 50, y, scale, scale);
-                    }
-                    
                     char peer_str[32];
                     sprintf(peer_str, "PEER %02X:%02X", peers[i].mac[4], peers[i].mac[5]);
+
+                    if(i == menu_index) {
+                        DRAW_AddString(">", 0, 50, y, scale, scale);
+                        status += "> " + String(peer_str) + "\n";
+                    } else {
+                        status += "  " + String(peer_str) + "\n";
+                    }
+                    
                     DRAW_AddString(peer_str, 0, 200, y, scale, scale);
                 }
                 
@@ -1895,9 +1943,13 @@ static void guiTask(void* pvParameters) {
                 int back_y = start_y - (peer_count * spacing);
                 if(menu_index == peer_count) {
                     DRAW_AddString(">", 0, 50, back_y, scale, scale);
+                    status += "> Back\n";
+                } else {
+                    status += "  Back\n";
                 }
                 DRAW_AddString("BACK", 0, 200, back_y, scale, scale);
                 
+                updateWebUIStatus(status);
                 last_menu_index = menu_index;
             }
 
@@ -1937,6 +1989,9 @@ static void guiTask(void* pvParameters) {
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", game_score);
                 DRAW_AddString(score_str, 0, 300, 800, 30, 30);
+                updateWebUIStatus("GAME: SNAKE\nGAME OVER\nScore: " + String(game_score));
+            } else {
+                updateWebUIStatus("GAME: SNAKE\nScore: " + String(game_score));
             }
 
         } else if (ui_state == UI_BREAKOUT) {
@@ -1980,8 +2035,10 @@ static void guiTask(void* pvParameters) {
             if(brk_game_over) {
                 if(brk_game_over == 2) {
                     DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
+                    updateWebUIStatus("GAME: BREAKOUT\nYOU WIN\nScore: " + String(brk_score));
                 } else {
                     DRAW_AddString("GAME OVER", 0, 500, 1100, 20, 20);
+                    updateWebUIStatus("GAME: BREAKOUT\nGAME OVER\nScore: " + String(brk_score));
                 }
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", brk_score);
@@ -1990,6 +2047,7 @@ static void guiTask(void* pvParameters) {
                 char lives_str[16];
                 sprintf(lives_str, "L:%d", brk_lives);
                 DRAW_AddString(lives_str, 0, 50, 50, 30, 30);
+                updateWebUIStatus("GAME: BREAKOUT\nScore: " + String(brk_score) + "\nLives: " + String(brk_lives));
             }
 
         } else if (ui_state == UI_FLAPPY) {
@@ -2098,10 +2156,12 @@ static void guiTask(void* pvParameters) {
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", race_score);
                 DRAW_AddString(score_str, 0, 300, 800, 30, 30);
+                updateWebUIStatus("GAME: RACING\nGAME OVER\nScore: " + String(race_score));
             } else {
                 char score_str[16];
                 sprintf(score_str, "%d", race_score);
                 DRAW_AddString(score_str, 0, 50, 1900, 20, 20);
+                updateWebUIStatus("GAME: RACING\nScore: " + String(race_score));
             }
 
         } else if (ui_state == UI_RUNTINY) {
@@ -2164,10 +2224,12 @@ static void guiTask(void* pvParameters) {
                 char score_str[32];
                 sprintf(score_str, "SCORE: %d", run_score);
                 DRAW_AddString(score_str, 0, 300, 800, 30, 30);
+                updateWebUIStatus("GAME: RUNTINY\nGAME OVER\nScore: " + String(run_score));
             } else {
                 char score_str[16];
                 sprintf(score_str, "%d", run_score);
                 DRAW_AddString(score_str, 0, 50, 1900, 20, 20);
+                updateWebUIStatus("GAME: RUNTINY\nScore: " + String(run_score));
             }
 
         } else if (ui_state == UI_TANK) {
@@ -2287,15 +2349,21 @@ static void guiTask(void* pvParameters) {
             }
             
             if(tank_game_over) {
+                String status = "GAME: TANK\n";
                 if(tank_game_over == 1) {
                     DRAW_AddString("YOU LOSE", 0, 600, 1100, 20, 20);
+                    status += "YOU LOSE";
                 } else if(tank_game_over == 2) {
                     DRAW_AddString("NOT CONNECTED", 0, 400, 1100, 20, 20);
+                    status += "NOT CONNECTED";
                 } else if(tank_game_over == 3) {
                     DRAW_AddString("OPPONENT LEFT", 0, 400, 1100, 20, 20);
+                    status += "OPPONENT LEFT";
                 } else if(tank_game_over == 4) {
                     DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
+                    status += "YOU WIN";
                 }
+                updateWebUIStatus(status);
                 
                 // Auto exit after 2 seconds
                 static unsigned long exit_timer = 0;
@@ -2307,6 +2375,8 @@ static void guiTask(void* pvParameters) {
                     exit_timer = 0;
                     Network_Manager::endGame(0);
                 }
+            } else {
+                updateWebUIStatus("GAME: TANK\nPlaying...");
             }
 
         } else if (ui_state == UI_ABOUT) {
@@ -2324,6 +2394,7 @@ static void guiTask(void* pvParameters) {
                 DRAW_AddString("ESP32 VECTOR", 0, 610, 1300, 30, 30);
                 DRAW_AddString("DISPLAY SYSTEM", 0, 540, 1050, 30, 30);
                 DRAW_AddString("V1.0", 0, 885, 800, 30, 30);
+                updateWebUIStatus("ABOUT\nESP32 VECTOR\nDISPLAY SYSTEM\nV1.0");
                 last_menu_index = 0; // Mark as drawn
             }
         }

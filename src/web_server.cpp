@@ -3,6 +3,7 @@
 #include "freertos.h"
 
 WebServer server(80);
+String current_ui_status = "{}";
 
 const char* html = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -15,6 +16,7 @@ const char* html = R"rawliteral(
     .nav-btn { background-color: #008CBA; }
     .enter-btn { background-color: #f44336; }
     .row { display: flex; justify-content: center; align-items: center; }
+    #ui-status { margin-top: 20px; padding: 10px; border: 1px solid #555; background: #333; text-align: left; font-family: monospace; white-space: pre-wrap; min-height: 100px; }
   </style>
   <script>
     var t = 0;
@@ -27,6 +29,12 @@ const char* html = R"rawliteral(
       }
       fetch(path);
     }
+    
+    setInterval(function() {
+      fetch('/status').then(response => response.text()).then(data => {
+        document.getElementById('ui-status').innerText = data;
+      });
+    }, 500);
   </script>
 </head>
 <body>
@@ -44,6 +52,8 @@ const char* html = R"rawliteral(
     <button class="button nav-btn" onmousedown="c('/down', event)" ontouchstart="c('/down', event)">DOWN / NEXT</button>
   </div>
 
+  <div id="ui-status">Loading UI Status...</div>
+
   <p>Connect to WiFi: ESP32_Game_Controller / 12345678</p>
 </body>
 </html>
@@ -51,6 +61,14 @@ const char* html = R"rawliteral(
 
 void handleRoot() {
   server.send(200, "text/html", html);
+}
+
+void handleStatus() {
+  server.send(200, "text/plain", current_ui_status);
+}
+
+void updateWebUIStatus(String status) {
+    current_ui_status = status;
 }
 
 void handleUp() {
@@ -94,6 +112,7 @@ void webServerTask(void* pvParameters) {
   Serial.println(myIP);
 
   server.on("/", handleRoot);
+  server.on("/status", handleStatus);
   server.on("/up", handleUp);
   server.on("/down", handleDown);
   server.on("/left", handleLeft);
