@@ -7,6 +7,10 @@
 
 static uint8_t drawStepSize = 16; // 默认步长
 
+uint8_t DRAW_GetStepSize() {
+    return drawStepSize;
+}
+
 // --- DMA 模式全局变量 ---
 static DrawMode currentDrawMode = DRAW_MODE_CPU;
 // DMA 缓冲区：存储打包的 X (高16位) 和 Y (低16位)
@@ -323,6 +327,48 @@ int16_t DRAW_AddString(const char *s, uint16_t spacing, int32_t x, int32_t y, ui
     return slot;
 }
 
+int32_t DRAW_CalcCharWidth(char c, uint16_t spacing, uint16_t scale_x) {
+    if (c == ' ') {
+        return 4 * scale_x;
+    }
+    CharPattern cp = _getPattern(c);
+    if (!cp.lines) return 4 * scale_x;
+    float min_x, max_x;
+    _getCharBounds(cp, min_x, max_x);
+    float char_w = max_x - min_x;
+    if (char_w < 1.0f) char_w = 4.0f;
+    if (spacing > 0) {
+        return spacing;
+    } else {
+        return (int32_t)((char_w + 1.5f) * scale_x);
+    }
+}
+
+int32_t DRAW_CalcStringWidth(const char *s, uint16_t spacing, uint16_t scale_x) {
+    int32_t width = 0;
+    const char* p = s;
+    while (*p) {
+        if (*p == ' ') {
+            width += 4 * scale_x;
+        } else {
+            CharPattern cp = _getPattern(*p);
+            if (cp.lines) {
+                float min_x, max_x;
+                _getCharBounds(cp, min_x, max_x);
+                float char_w = max_x - min_x;
+                if (char_w < 1.0f) char_w = 4.0f;
+                if (spacing > 0) {
+                    width += spacing;
+                } else {
+                    width += (int32_t)((char_w + 1.5f) * scale_x);
+                }
+            }
+        }
+        p++;
+    }
+    return width;
+}
+
 int32_t DRAW_GetTextScroll(int16_t slot) {
     if (slot >= 0 && slot < shapeCount && shapePool[slot].type == SHAPE_STRING) {
         return shapePool[slot].scroll;
@@ -360,11 +406,19 @@ void DRAW_Update(void) {
     }
 }
 
+void DRAW_DisableScroll() {
+    for (uint16_t i = 0; i < shapeCount; i++) {
+        if (shapePool[i].type == SHAPE_STRING) {
+            shapePool[i].scroll = 0;
+        }
+    }
+}
+
 void DRAW_Terminal_Init(uint16_t scale_pct, int32_t spacing) {
     DRAW_Clear();
     term_scale_pct = scale_pct;
     term_spacing = spacing;
-    term_cursor_y = 4096 - 200; // 从顶部开始
+    term_cursor_y = 1700; // 可见区域 0~2047, 留够空间给字符+行高
 }
 
 void DRAW_Terminal_SetSpacing(int32_t spacing) {
@@ -382,7 +436,7 @@ void DRAW_Terminal_Print(const char *str) {
     // 换行或清除？目前只是让它离开屏幕或重置
     if (term_cursor_y < 0) {
         DRAW_Clear();
-        term_cursor_y = 4096 - 200;
+        term_cursor_y = 1900;
     }
 }
 

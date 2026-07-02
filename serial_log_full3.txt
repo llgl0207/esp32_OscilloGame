@@ -1,0 +1,1043 @@
+﻿python : --- Miniterm on COM10  115200,8,N,1 ---
+所在位置 行:1 字符: 1
++ python -m serial.tools.miniterm --raw COM10 115200 2>&1 | Out-File -E ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--- Miniterm on COM10  115200,8,N 
+   ,1 ---:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H ---
+Touch(Cap): U=30787 D=30115 L=31848 R=31235
+[MIC] RMS=606.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=260 318 272 249 304 368 393 339 (cnt=1150)
+[WWD] AFE fetch=184 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30811 D=30108 L=31851 R=31285
+[MIC] RMS=84.7 (state=1, n=256)
+Touch(Cap): U=30771 D=30118 L=31830 R=31285
+[WWD] feed_samples[0..7]=-732 -731 -707 -699 -705 -712 -716 -722 (cnt=1200)
+[WWD] AFE fetch=192 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30788 D=30120 L=31844 R=31258
+[MIC] RMS=137.3 (state=1, n=256)
+Touch(Cap): U=30791 D=30143 L=31847 R=31278
+[MIC] RMS=525.8 (state=1, n=256)
+[WWD] feed_samples[0..7]=228 241 229 225 227 229 238 250 (cnt=1250)
+[WWD] AFE fetch=200 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30798 D=30122 L=31845 R=31251
+[MIC] RMS=463.3 (state=1, n=256)
+[VE] heartbeat: state=1 rms=463.3
+Touch(Cap): U=30779 D=30128 L=31867 R=31260
+[WWD] feed_samples[0..7]=-28 -14 -10 -2 -1 -5 -18 -26 (cnt=1300)
+Touch(Cap): U=30811 D=30144 L=31847 R=31284
+[WWD] AFE fetch=208 wake=0 vol=0.0dB vad=1
+[MIC] RMS=426.0 (state=1, n=256)
+Touch(Cap): U=30765 D=30129 L=31856 R=31289
+[MIC] RMS=202.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-63 -54 -46 -78 -66 -31 -38 -44 (cnt=1350)
+[WWD] AFE fetch=216 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30796 D=30134 L=31857 R=31268
+[MIC] RMS=320.4 (state=1, n=256)
+Touch(Cap): U=30783 D=30122 L=31845 R=31238
+[WWD] feed_samples[0..7]=725 700 702 703 719 722 720 708 (cnt=1400)
+Touch(Cap): U=30784 D=30100 L=31862 R=31239
+[MIC] RMS=108.8 (state=1, n=256)
+[WWD] AFE fetch=224 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30792 D=29929 L=31703 R=31251
+[MIC] RMS=290.8 (state=1, n=256)
+[WWD] feed_samples[0..7]=125 116 88 106 124 128 123 114 (cnt=1450)
+Touch(Cap): U=30771 D=30125 L=31842 R=31243
+[WWD] AFE fetch=232 wake=0 vol=0.0dB vad=1
+[MIC] RMS=662.9 (state=1, n=256)
+Touch(Cap): U=30777 D=30113 L=31856 R=31268
+[WWD] feed_samples[0..7]=696 718 718 715 693 677 681 690 (cnt=1500)
+Touch(Cap): U=30796 D=30132 L=31851 R=31245
+[MIC] RMS=624.1 (state=1, n=256)
+[WWD] AFE fetch=240 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30790 D=30129 L=31862 R=31266
+[MIC] RMS=242.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=1018 992 1009 1020 1042 1051 1056 1068 (cnt=1550)
+Touch(Cap): U=30795 D=30129 L=31852 R=31305
+[WWD] AFE fetch=248 wake=0 vol=0.0dB vad=1
+[MIC] RMS=102.1 (state=1, n=256)
+Touch(Cap): U=30813 D=30157 L=31848 R=31275
+[MIC] RMS=79.2 (state=1, n=256)
+[VE] heartbeat: state=1 rms=79.2
+[WWD] feed_samples[0..7]=214 204 222 229 234 229 227 222 (cnt=1600)
+Touch(Cap): U=30796 D=30127 L=31847 R=31280
+[WWD] AFE fetch=256 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30791 D=30140 L=31847 R=31256
+[MIC] RMS=1074.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-257 -246 -234 -241 -254 -280 -254 -249 (cnt=1650)
+Touch(Cap): U=30783 D=30127 L=31849 R=31277
+[MIC] RMS=139.0 (state=1, n=256)
+[WWD] AFE fetch=264 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30789 D=30148 L=31849 R=31274
+[MIC] RMS=778.4 (state=1, n=256)
+[WWD] feed_samples[0..7]=297 295 300 304 307 311 316 319 (cnt=1700)
+Touch(Cap): U=30782 D=30116 L=31840 R=31260
+[WWD] AFE fetch=272 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30792 D=30111 L=31825 R=31263
+[MIC] RMS=126.4 (state=1, n=256)
+[WWD] feed_samples[0..7]=-280 -278 -275 -275 -262 -268 -276 -271 (cnt=1750)
+Touch(Cap): U=30779 D=30135 L=31838 R=31263
+[MIC] RMS=104.9 (state=1, n=256)
+[WWD] AFE fetch=280 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30776 D=30130 L=31849 R=31254
+[MIC] RMS=349.8 (state=1, n=256)
+[WWD] feed_samples[0..7]=282 290 284 262 259 278 281 276 (cnt=1800)
+Touch(Cap): U=30775 D=30128 L=31840 R=31264
+[WWD] AFE fetch=288 wake=0 vol=0.0dB vad=1
+[MIC] RMS=523.3 (state=1, n=256)
+Touch(Cap): U=30792 D=30129 L=31853 R=31253
+[WWD] feed_samples[0..7]=536 503 485 483 515 522 507 496 (cnt=1850)
+[MIC] RMS=712.6 (state=1, n=256)
+Touch(Cap): U=30770 D=30137 L=31850 R=31262
+[WWD] AFE fetch=296 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30786 D=30140 L=31835 R=31261
+[MIC] RMS=77.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=-24 -30 -45 -40 -33 -11 -7 -15 (cnt=1900)
+Touch(Cap): U=30794 D=30129 L=31848 R=31257
+[MIC] RMS=666.8 (state=1, n=256)
+[WWD] AFE fetch=304 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=666.8
+Touch(Cap): U=30782 D=30124 L=31855 R=31251
+[MIC] RMS=959.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=738 754 756 741 730 732 746 754 (cnt=1950)
+Touch(Cap): U=30778 D=30137 L=31861 R=31258
+[WWD] AFE fetch=312 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30803 D=30126 L=31859 R=31260
+[MIC] RMS=179.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=-707 -681 -686 -711 -701 -677 -686 -696 (cnt=2000)
+Touch(Cap): U=30792 D=30115 L=31847 R=31283
+[MIC] RMS=317.3 (state=1, n=256)
+[WWD] AFE fetch=320 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30785 D=30119 L=31833 R=31260
+[MIC] RMS=233.2 (state=1, n=256)
+[WWD] feed_samples[0..7]=-181 -170 -183 -173 -180 -166 -179 -182 (cnt=2050)
+Touch(Cap): U=30787 D=30135 L=31836 R=31246
+[WWD] AFE fetch=328 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30770 D=30122 L=31841 R=31261
+[MIC] RMS=1307.6 (state=1, n=256)
+Touch(Cap): U=30787 D=30122 L=31840 R=31255
+[WWD] feed_samples[0..7]=-500 -513 -478 -471 -467 -466 -456 -469 (cnt=2100)
+[MIC] RMS=317.5 (state=1, n=256)
+Touch(Cap): U=30766 D=30139 L=31848 R=31245
+[WWD] AFE fetch=336 wake=0 vol=0.0dB vad=1
+[MIC] RMS=195.3 (state=1, n=256)
+Touch(Cap): U=30787 D=30113 L=31847 R=31271
+[WWD] feed_samples[0..7]=-103 -106 -126 -145 -177 -201 -218 -248 (cnt=2150)
+Touch(Cap): U=30786 D=30143 L=31849 R=31282
+[MIC] RMS=137.8 (state=1, n=256)
+[WWD] AFE fetch=344 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30802 D=30119 L=31850 R=31286
+[WWD] feed_samples[0..7]=379 390 389 376 363 368 395 399 (cnt=2200)
+[MIC] RMS=124.3 (state=1, n=256)
+Touch(Cap): U=30805 D=30126 L=31840 R=31275
+[WWD] AFE fetch=352 wake=0 vol=0.0dB vad=1
+[MIC] RMS=182.2 (state=1, n=256)
+[VE] heartbeat: state=1 rms=182.2
+Touch(Cap): U=30813 D=30123 L=31843 R=31258
+[WWD] feed_samples[0..7]=1096 1094 1083 1070 1072 1075 1075 1080 (cnt=2250)
+Touch(Cap): U=30807 D=30136 L=31870 R=31280
+[MIC] RMS=293.3 (state=1, n=256)
+[WWD] AFE fetch=360 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30787 D=30146 L=31846 R=31258
+[WWD] feed_samples[0..7]=-794 -787 -787 -800 -803 -793 -797 -795 (cnt=2300)
+[MIC] RMS=907.5 (state=1, n=256)
+Touch(Cap): U=30811 D=30116 L=31853 R=31247
+[WWD] AFE fetch=368 wake=0 vol=0.0dB vad=1
+[MIC] RMS=215.6 (state=1, n=256)
+Touch(Cap): U=30787 D=30118 L=31844 R=31254
+[WWD] feed_samples[0..7]=236 236 224 219 222 249 240 240 (cnt=2350)
+Touch(Cap): U=30769 D=30115 L=31827 R=31237
+[MIC] RMS=598.2 (state=1, n=256)
+[WWD] AFE fetch=376 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30780 D=30122 L=31817 R=31260
+[MIC] RMS=665.7 (state=1, n=256)
+[WWD] feed_samples[0..7]=767 767 763 759 758 763 762 744 (cnt=2400)
+Touch(Cap): U=30783 D=30137 L=31835 R=31258
+[MIC] RMS=146.5 (state=1, n=256)
+[WWD] AFE fetch=384 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30748 D=30137 L=31826 R=31251
+[WWD] feed_samples[0..7]=-1018 -1027 -1029 -1023 -1016 -1018 -1011 -1007 (cnt=2450)
+Touch(Cap): U=30801 D=30127 L=31864 R=31263
+[MIC] RMS=106.8 (state=1, n=256)
+Touch(Cap): U=30776 D=30137 L=31849 R=31263
+[WWD] AFE fetch=392 wake=0 vol=0.0dB vad=1
+[MIC] RMS=437.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=106 99 120 126 120 107 95 107 (cnt=2500)
+Touch(Cap): U=30787 D=30134 L=31710 R=31260
+[MIC] RMS=716.6 (state=1, n=256)
+Touch(Cap): U=30767 D=30121 L=31846 R=31258
+[WWD] AFE fetch=400 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-189 -191 -186 -185 -192 -187 -181 -181 (cnt=2550)
+Touch(Cap): U=30791 D=30120 L=31838 R=31272
+[MIC] RMS=918.1 (state=1, n=256)
+[VE] heartbeat: state=1 rms=918.1
+Touch(Cap): U=30778 D=30115 L=31844 R=31261
+[WWD] AFE fetch=408 wake=0 vol=0.0dB vad=1
+[MIC] RMS=137.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=145 145 146 138 152 170 153 141 (cnt=2600)
+Touch(Cap): U=30771 D=30141 L=31844 R=31266
+[MIC] RMS=849.0 (state=1, n=256)
+Touch(Cap): U=30774 D=30127 L=31838 R=31259
+[WWD] AFE fetch=416 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=834 825 816 832 850 849 837 842 (cnt=2650)
+Touch(Cap): U=30791 D=30129 L=31854 R=31253
+[MIC] RMS=788.8 (state=1, n=256)
+Touch(Cap): U=30774 D=30137 L=31845 R=31260
+[MIC] RMS=858.2 (state=1, n=256)
+[WWD] AFE fetch=424 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-352 -341 -343 -358 -369 -372 -355 -354 (cnt=2700)
+Touch(Cap): U=30793 D=30120 L=31855 R=31262
+[MIC] RMS=89.0 (state=1, n=256)
+Touch(Cap): U=30799 D=30125 L=31848 R=31269
+[WWD] AFE fetch=432 wake=0 vol=0.0dB vad=1
+[MIC] RMS=143.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=151 139 137 124 116 119 135 132 (cnt=2750)
+Touch(Cap): U=30777 D=30120 L=31845 R=31265
+Touch(Cap): U=30783 D=30124 L=31852 R=31302
+[MIC] RMS=153.1 (state=1, n=256)
+[WWD] AFE fetch=440 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-948 -940 -919 -904 -902 -903 -901 -903 (cnt=2800)
+Touch(Cap): U=30773 D=30126 L=31847 R=31292
+[MIC] RMS=1001.1 (state=1, n=256)
+Touch(Cap): U=30792 D=30130 L=31844 R=31300
+[WWD] AFE fetch=448 wake=0 vol=0.0dB vad=1
+[MIC] RMS=278.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=-163 -155 -156 -162 -164 -166 -164 -162 (cnt=2850)
+Touch(Cap): U=30796 D=30116 L=31847 R=31271
+Touch(Cap): U=30772 D=30152 L=31842 R=31276
+[MIC] RMS=601.5 (state=1, n=256)
+[VE] heartbeat: state=1 rms=601.5
+[WWD] AFE fetch=456 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=920 922 901 902 906 903 908 917 (cnt=2900)
+Touch(Cap): U=30788 D=30150 L=31857 R=31280
+[MIC] RMS=751.2 (state=1, n=256)
+Touch(Cap): U=30791 D=30107 L=31838 R=31270
+[MIC] RMS=1153.2 (state=1, n=256)
+[WWD] AFE fetch=464 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=853 857 858 852 841 847 858 844 (cnt=2950)
+Touch(Cap): U=30789 D=30131 L=31848 R=31258
+[MIC] RMS=1199.7 (state=1, n=256)
+Touch(Cap): U=30794 D=30128 L=31852 R=31280
+[WWD] AFE fetch=472 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=702 685 654 621 593 569 559 520 (cnt=3000)
+Touch(Cap): U=30769 D=30111 L=31848 R=31266
+[MIC] RMS=313.3 (state=1, n=256)
+Touch(Cap): U=30769 D=30128 L=31848 R=31251
+[MIC] RMS=237.0 (state=1, n=256)
+[WWD] AFE fetch=480 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-375 -378 -385 -392 -376 -369 -363 -367 (cnt=3050)
+Touch(Cap): U=30781 D=30114 L=31847 R=31263
+[MIC] RMS=248.6 (state=1, n=256)
+Touch(Cap): U=30783 D=30161 L=31845 R=31268
+[WWD] AFE fetch=488 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=633 631 629 627 622 623 627 632 (cnt=3100)
+[MIC] RMS=134.5 (state=1, n=256)
+Touch(Cap): U=30777 D=30146 L=31847 R=31261
+Touch(Cap): U=30797 D=30124 L=31851 R=31251
+[MIC] RMS=854.6 (state=1, n=256)
+[WWD] AFE fetch=496 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-194 -196 -203 -203 -192 -191 -182 -184 (cnt=3150)
+Touch(Cap): U=30794 D=30132 L=31851 R=31252
+[MIC] RMS=539.7 (state=1, n=256)
+Touch(Cap): U=30773 D=30108 L=31826 R=31236
+[MIC] RMS=51.4 (state=1, n=256)
+[WWD] AFE fetch=504 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=51.4
+[WWD] feed_samples[0..7]=71 67 67 53 48 51 40 39 (cnt=3200)
+Touch(Cap): U=30771 D=30123 L=31650 R=31273
+Touch(Cap): U=30772 D=30104 L=31843 R=31274
+[MIC] RMS=44.6 (state=1, n=256)
+Touch(Cap): U=30777 D=30127 L=31852 R=31257
+[WWD] feed_samples[0..7]=545 554 557 561 563 561 562 552 (cnt=3250)
+[WWD] AFE fetch=512 wake=0 vol=0.0dB vad=1
+[MIC] RMS=422.3 (state=1, n=256)
+Touch(Cap): U=30776 D=30130 L=31852 R=31249
+[MIC] RMS=334.2 (state=1, n=256)
+Touch(Cap): U=30785 D=30130 L=31843 R=31242
+[WWD] feed_samples[0..7]=-250 -250 -251 -252 -247 -242 -238 -244 (cnt=3300)
+[WWD] AFE fetch=520 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30800 D=30122 L=31847 R=31253
+[MIC] RMS=436.2 (state=1, n=256)
+Touch(Cap): U=30782 D=30123 L=31853 R=31243
+[WWD] feed_samples[0..7]=-683 -683 -679 -683 -683 -685 -685 -687 (cnt=3350)
+[WWD] AFE fetch=528 wake=0 vol=0.0dB vad=1
+[MIC] RMS=991.2 (state=1, n=256)
+Touch(Cap): U=30797 D=30117 L=31843 R=31271
+[MIC] RMS=149.5 (state=1, n=256)
+Touch(Cap): U=30787 D=30116 L=31846 R=31269
+[WWD] feed_samples[0..7]=515 525 525 528 530 540 542 550 (cnt=3400)
+[WWD] AFE fetch=536 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30796 D=30137 L=31828 R=31262
+[MIC] RMS=71.6 (state=1, n=256)
+Touch(Cap): U=30693 D=30069 L=31769 R=31211
+[WWD] feed_samples[0..7]=747 762 756 762 760 765 768 773 (cnt=3450)
+[MIC] RMS=2204.9 (state=1, n=256)
+[WWD] AFE fetch=544 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30763 D=30107 L=31837 R=31228
+[MIC] RMS=282.9 (state=1, n=256)
+Touch(Cap): U=30767 D=30133 L=31824 R=31256
+[WWD] feed_samples[0..7]=-232 -235 -235 -237 -234 -236 -229 -227 (cnt=3500)
+[WWD] AFE fetch=552 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30783 D=30125 L=31837 R=31257
+[MIC] RMS=777.0 (state=1, n=256)
+[VE] heartbeat: state=1 rms=777.0
+Touch(Cap): U=30786 D=30123 L=31853 R=31244
+[MIC] RMS=539.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=324 335 329 324 314 323 335 337 (cnt=3550)
+[WWD] AFE fetch=560 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30783 D=30114 L=31846 R=31226
+[MIC] RMS=329.2 (state=1, n=256)
+Touch(Cap): U=30773 D=30129 L=31719 R=31233
+[WWD] feed_samples[0..7]=-26 -35 -30 -26 -21 -15 -20 -14 (cnt=3600)
+[WWD] AFE fetch=568 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30781 D=30141 L=31844 R=31267
+[MIC] RMS=1210.1 (state=1, n=256)
+Touch(Cap): U=30775 D=30120 L=31843 R=31250
+[MIC] RMS=765.2 (state=1, n=256)
+[WWD] feed_samples[0..7]=942 939 945 945 941 938 935 937 (cnt=3650)
+Touch(Cap): U=30772 D=30139 L=31854 R=31267
+[WWD] AFE fetch=576 wake=0 vol=0.0dB vad=1
+[MIC] RMS=200.8 (state=1, n=256)
+Touch(Cap): U=30790 D=30139 L=31866 R=31282
+[WWD] feed_samples[0..7]=-557 -570 -575 -565 -555 -551 -553 -546 (cnt=3700)
+Touch(Cap): U=30793 D=30133 L=31841 R=31264
+[MIC] RMS=237.7 (state=1, n=256)
+[WWD] AFE fetch=584 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30784 D=30121 L=31857 R=31244
+[MIC] RMS=685.4 (state=1, n=256)
+[WWD] feed_samples[0..7]=96 91 100 102 106 108 94 98 (cnt=3750)
+Touch(Cap): U=30814 D=30128 L=31868 R=31263
+[WWD] AFE fetch=592 wake=0 vol=0.0dB vad=1
+[MIC] RMS=142.9 (state=1, n=256)
+Touch(Cap): U=30786 D=30119 L=31853 R=31243
+[WWD] feed_samples[0..7]=-521 -534 -535 -532 -545 -540 -537 -545 (cnt=3800)
+Touch(Cap): U=30770 D=30101 L=31846 R=31247
+[MIC] RMS=531.9 (state=1, n=256)
+[WWD] AFE fetch=600 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30786 D=30116 L=31843 R=31257
+[MIC] RMS=342.0 (state=1, n=256)
+[VE] heartbeat: state=1 rms=342.0
+[WWD] feed_samples[0..7]=136 119 95 72 56 35 21 -1 (cnt=3850)
+Touch(Cap): U=30782 D=30125 L=31846 R=31229
+[WWD] AFE fetch=608 wake=0 vol=0.0dB vad=1
+[MIC] RMS=807.7 (state=1, n=256)
+Touch(Cap): U=30792 D=30131 L=31845 R=31261
+[WWD] feed_samples[0..7]=125 127 119 112 106 113 109 99 (cnt=3900)
+[MIC] RMS=89.3 (state=1, n=256)
+Touch(Cap): U=30795 D=30126 L=31855 R=31259
+[WWD] AFE fetch=616 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30775 D=30122 L=31849 R=31275
+[MIC] RMS=293.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=630 630 638 651 637 629 630 641 (cnt=3950)
+Touch(Cap): U=30778 D=30125 L=31854 R=31267
+[MIC] RMS=137.8 (state=1, n=256)
+[WWD] AFE fetch=624 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30778 D=30129 L=31852 R=31256
+[MIC] RMS=447.4 (state=1, n=256)
+[WWD] feed_samples[0..7]=-395 -404 -408 -415 -411 -405 -400 -399 (cnt=4000)
+Touch(Cap): U=30778 D=30124 L=31843 R=31264
+[WWD] AFE fetch=632 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30794 D=30124 L=31833 R=31251
+[MIC] RMS=1059.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=95 100 95 93 101 97 104 108 (cnt=4050)
+Touch(Cap): U=30767 D=30110 L=31843 R=31242
+[MIC] RMS=825.3 (state=1, n=256)
+[WWD] AFE fetch=640 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30770 D=30139 L=31850 R=31247
+[MIC] RMS=575.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=827 824 825 824 820 824 817 822 (cnt=4100)
+Touch(Cap): U=30776 D=30134 L=31845 R=31259
+[WWD] AFE fetch=648 wake=0 vol=0.0dB vad=1
+[MIC] RMS=239.7 (state=1, n=256)
+Touch(Cap): U=30786 D=30130 L=31838 R=31249
+[WWD] feed_samples[0..7]=-699 -705 -713 -711 -705 -707 -700 -706 (cnt=4150)
+[MIC] RMS=655.6 (state=1, n=256)
+[VE] heartbeat: state=1 rms=655.6
+Touch(Cap): U=30786 D=30138 L=31850 R=31264
+[WWD] AFE fetch=656 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30776 D=30150 L=31842 R=31288
+[MIC] RMS=200.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=119 129 119 119 112 123 122 123 (cnt=4200)
+Touch(Cap): U=30782 D=30132 L=31853 R=31254
+[MIC] RMS=750.7 (state=1, n=256)
+[WWD] AFE fetch=664 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30776 D=30128 L=31842 R=31244
+[WWD] feed_samples[0..7]=-123 -116 -116 -111 -105 -96 -97 -105 (cnt=4250)
+[MIC] RMS=653.7 (state=1, n=256)
+Touch(Cap): U=30783 D=30133 L=31860 R=31270
+[WWD] AFE fetch=672 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30784 D=30123 L=31844 R=31268
+[MIC] RMS=249.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-258 -256 -263 -271 -263 -262 -267 -261 (cnt=4300)
+Touch(Cap): U=30797 D=30119 L=31844 R=31258
+[MIC] RMS=605.3 (state=1, n=256)
+[WWD] AFE fetch=680 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30770 D=30129 L=31845 R=31275
+[MIC] RMS=259.7 (state=1, n=256)
+[WWD] feed_samples[0..7]=279 279 274 270 278 282 276 272 (cnt=4350)
+Touch(Cap): U=30810 D=30110 L=31840 R=31252
+[WWD] AFE fetch=688 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30776 D=30129 L=31860 R=31286
+[MIC] RMS=338.0 (state=1, n=256)
+[WWD] feed_samples[0..7]=100 104 108 107 104 102 109 123 (cnt=4400)
+Touch(Cap): U=30796 D=30135 L=31849 R=31270
+[MIC] RMS=975.3 (state=1, n=256)
+Touch(Cap): U=30795 D=30123 L=31839 R=31252
+[WWD] AFE fetch=696 wake=0 vol=0.0dB vad=1
+[MIC] RMS=280.0 (state=1, n=256)
+[WWD] feed_samples[0..7]=368 357 347 349 353 357 356 367 (cnt=4450)
+Touch(Cap): U=30787 D=30140 L=31856 R=31267
+Touch(Cap): U=30795 D=30131 L=31842 R=31264
+[MIC] RMS=676.5 (state=1, n=256)
+[WWD] AFE fetch=704 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=676.5
+Touch(Cap): U=30795 D=30125 L=31854 R=31253
+[WWD] feed_samples[0..7]=113 104 112 124 113 110 106 110 (cnt=4500)
+[MIC] RMS=922.3 (state=1, n=256)
+Touch(Cap): U=30781 D=30114 L=31848 R=31282
+[WWD] AFE fetch=712 wake=0 vol=0.0dB vad=1
+[MIC] RMS=83.3 (state=1, n=256)
+Touch(Cap): U=30794 D=30132 L=31850 R=31243
+[WWD] feed_samples[0..7]=-736 -738 -741 -734 -731 -735 -741 -738 (cnt=4550)
+Touch(Cap): U=30782 D=30098 L=31839 R=31271
+[MIC] RMS=45.2 (state=1, n=256)
+[WWD] AFE fetch=720 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30788 D=30133 L=31836 R=31242
+[WWD] feed_samples[0..7]=373 393 402 401 388 391 392 381 (cnt=4600)
+[MIC] RMS=392.4 (state=1, n=256)
+Touch(Cap): U=30775 D=30123 L=31846 R=31252
+[WWD] AFE fetch=728 wake=0 vol=0.0dB vad=1
+[MIC] RMS=914.9 (state=1, n=256)
+Touch(Cap): U=30785 D=30124 L=31842 R=31247
+[WWD] feed_samples[0..7]=-529 -540 -547 -543 -535 -535 -534 -528 (cnt=4650)
+Touch(Cap): U=30741 D=30095 L=31817 R=31248
+[MIC] RMS=355.8 (state=1, n=256)
+[WWD] AFE fetch=736 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30781 D=30104 L=31830 R=31245
+[WWD] feed_samples[0..7]=-14 -47 -72 -95 -116 -152 -193 -212 (cnt=4700)
+[MIC] RMS=182.8 (state=1, n=256)
+Touch(Cap): U=30785 D=30126 L=31841 R=31252
+[MIC] RMS=167.5 (state=1, n=256)
+[WWD] AFE fetch=744 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30736 D=30101 L=31778 R=31251
+[WWD] feed_samples[0..7]=1060 1072 1071 1070 1073 1064 1053 1068 (cnt=4750)
+Touch(Cap): U=30784 D=30125 L=31845 R=31242
+[MIC] RMS=100.5 (state=1, n=256)
+Touch(Cap): U=30787 D=30115 L=31847 R=31266
+[WWD] AFE fetch=752 wake=0 vol=0.0dB vad=1
+[MIC] RMS=65.4 (state=1, n=256)
+[VE] heartbeat: state=1 rms=65.4
+[WWD] feed_samples[0..7]=29 34 38 35 20 32 35 46 (cnt=4800)
+Touch(Cap): U=30778 D=30129 L=31845 R=31267
+[MIC] RMS=189.3 (state=1, n=256)
+Touch(Cap): U=30776 D=30160 L=31837 R=31221
+[WWD] AFE fetch=760 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=820 823 813 813 808 813 822 808 (cnt=4850)
+Touch(Cap): U=30786 D=30121 L=31840 R=31267
+[MIC] RMS=541.0 (state=1, n=256)
+Touch(Cap): U=30767 D=30121 L=31842 R=31262
+[WWD] AFE fetch=768 wake=0 vol=0.0dB vad=1
+[MIC] RMS=1090.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-8 -16 -14 -23 -30 -40 -30 -31 (cnt=4900)
+Touch(Cap): U=30782 D=30107 L=31844 R=31261
+[MIC] RMS=340.9 (state=1, n=256)
+Touch(Cap): U=30786 D=30129 L=31846 R=31257
+[WWD] AFE fetch=776 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-191 -188 -182 -198 -197 -197 -196 -195 (cnt=4950)
+Touch(Cap): U=30783 D=30156 L=31842 R=31255
+[MIC] RMS=782.6 (state=1, n=256)
+Touch(Cap): U=30775 D=30121 L=31843 R=31256
+[MIC] RMS=797.7 (state=1, n=256)
+[WWD] AFE fetch=784 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=678 685 687 688 696 709 718 717 (cnt=5000)
+Touch(Cap): U=30775 D=30125 L=31862 R=31255
+[MIC] RMS=59.4 (state=1, n=256)
+Touch(Cap): U=30775 D=30131 L=31850 R=31228
+[WWD] AFE fetch=792 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-229 -224 -228 -233 -226 -232 -240 -239 (cnt=5050)
+Touch(Cap): U=30783 D=30140 L=31840 R=31253
+[MIC] RMS=157.2 (state=1, n=256)
+Touch(Cap): U=30757 D=30121 L=31851 R=31272
+[MIC] RMS=90.8 (state=1, n=256)
+[WWD] AFE fetch=800 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30766 D=30113 L=31842 R=31224
+[WWD] feed_samples[0..7]=305 289 267 240 238 238 223 233 (cnt=5100)
+[MIC] RMS=214.1 (state=1, n=256)
+[VE] heartbeat: state=1 rms=214.1
+Touch(Cap): U=30767 D=30124 L=31842 R=31250
+[WWD] AFE fetch=808 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30782 D=30114 L=31858 R=31256
+[MIC] RMS=654.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=-322 -316 -330 -321 -308 -324 -349 -307 (cnt=5150)
+Touch(Cap): U=30788 D=30132 L=31839 R=31252
+[MIC] RMS=558.6 (state=1, n=256)
+Touch(Cap): U=30772 D=30140 L=31847 R=31232
+[WWD] AFE fetch=816 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=129 115 119 128 124 127 119 125 (cnt=5200)
+[MIC] RMS=766.2 (state=1, n=256)
+Touch(Cap): U=30774 D=30123 L=31848 R=31247
+Touch(Cap): U=30775 D=30122 L=31847 R=31258
+[MIC] RMS=50.0 (state=1, n=256)
+[WWD] AFE fetch=824 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=181 188 198 195 179 179 190 196 (cnt=5250)
+Touch(Cap): U=30782 D=30126 L=31854 R=31244
+[MIC] RMS=171.8 (state=1, n=256)
+Touch(Cap): U=30774 D=30119 L=31842 R=31274
+[WWD] AFE fetch=832 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-444 -453 -455 -457 -456 -455 -451 -456 (cnt=5300)
+[MIC] RMS=77.2 (state=1, n=256)
+Touch(Cap): U=30769 D=30127 L=31843 R=31242
+Touch(Cap): U=30797 D=30141 L=31844 R=31242
+[MIC] RMS=207.8 (state=1, n=256)
+[WWD] AFE fetch=840 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=813 823 823 810 814 813 821 819 (cnt=5350)
+Touch(Cap): U=30820 D=30124 L=31856 R=31251
+[MIC] RMS=218.5 (state=1, n=256)
+Touch(Cap): U=30777 D=30136 L=31833 R=31282
+[WWD] feed_samples[0..7]=-719 -710 -690 -699 -706 -707 -693 -683 (cnt=5400)
+[WWD] AFE fetch=848 wake=0 vol=0.0dB vad=1
+[MIC] RMS=525.6 (state=1, n=256)
+Touch(Cap): U=30794 D=30112 L=31840 R=31235
+Touch(Cap): U=30776 D=30110 L=31829 R=31250
+[MIC] RMS=533.1 (state=1, n=256)
+[VE] heartbeat: state=1 rms=533.1
+[WWD] feed_samples[0..7]=-663 -672 -668 -667 -660 -662 -671 -676 (cnt=5450)
+[WWD] AFE fetch=856 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30744 D=30132 L=31834 R=31235
+[MIC] RMS=459.9 (state=1, n=256)
+Touch(Cap): U=30792 D=30108 L=31840 R=31252
+[WWD] feed_samples[0..7]=-129 -128 -123 -124 -135 -141 -137 -130 (cnt=5500)
+Touch(Cap): U=30798 D=30137 L=31849 R=31245
+[MIC] RMS=145.2 (state=1, n=256)
+[WWD] AFE fetch=864 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30786 D=30125 L=31851 R=31249
+[MIC] RMS=168.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=464 439 431 400 375 361 330 300 (cnt=5550)
+Touch(Cap): U=30789 D=30132 L=31846 R=31243
+[WWD] AFE fetch=872 wake=0 vol=0.0dB vad=1
+[MIC] RMS=593.8 (state=1, n=256)
+Touch(Cap): U=30793 D=30142 L=31830 R=31245
+[MIC] RMS=997.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=-935 -936 -943 -942 -939 -939 -935 -938 (cnt=5600)
+Touch(Cap): U=30786 D=30123 L=31846 R=31258
+[WWD] AFE fetch=880 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30768 D=30126 L=31845 R=31259
+[MIC] RMS=444.9 (state=1, n=256)
+Touch(Cap): U=30791 D=30119 L=31841 R=31267
+[WWD] feed_samples[0..7]=328 336 338 332 334 331 339 344 (cnt=5650)
+[WWD] AFE fetch=888 wake=0 vol=0.0dB vad=1
+[MIC] RMS=351.6 (state=1, n=256)
+Touch(Cap): U=30791 D=30120 L=31854 R=31260
+Touch(Cap): U=30777 D=30121 L=31854 R=31260
+[MIC] RMS=77.0 (state=1, n=256)
+[WWD] feed_samples[0..7]=53 60 61 63 58 52 43 46 (cnt=5700)
+[WWD] AFE fetch=896 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30763 D=30151 L=31842 R=31248
+[MIC] RMS=876.6 (state=1, n=256)
+Touch(Cap): U=30797 D=30111 L=31851 R=31255
+[WWD] feed_samples[0..7]=300 300 300 311 303 306 304 309 (cnt=5750)
+[MIC] RMS=907.8 (state=1, n=256)
+[WWD] AFE fetch=904 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=907.8
+Touch(Cap): U=30762 D=30146 L=31839 R=31271
+[MIC] RMS=206.6 (state=1, n=256)
+Touch(Cap): U=30778 D=30129 L=31849 R=31241
+[WWD] feed_samples[0..7]=-82 -74 -70 -76 -81 -76 -70 -74 (cnt=5800)
+[WWD] AFE fetch=912 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30792 D=30120 L=31859 R=31269
+[MIC] RMS=934.1 (state=1, n=256)
+Touch(Cap): U=30796 D=30105 L=31861 R=31247
+[WWD] feed_samples[0..7]=-448 -437 -428 -427 -427 -430 -435 -427 (cnt=5850)
+[MIC] RMS=122.4 (state=1, n=256)
+[WWD] AFE fetch=920 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30786 D=30118 L=31846 R=31239
+[MIC] RMS=368.9 (state=1, n=256)
+Touch(Cap): U=30765 D=30120 L=31850 R=31286
+[WWD] feed_samples[0..7]=-318 -327 -313 -309 -310 -314 -321 -323 (cnt=5900)
+[WWD] AFE fetch=928 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30793 D=30151 L=31844 R=31246
+[MIC] RMS=322.5 (state=1, n=256)
+Touch(Cap): U=30782 D=30123 L=31843 R=31241
+[MIC] RMS=346.2 (state=1, n=256)
+[WWD] feed_samples[0..7]=-412 -421 -427 -414 -414 -406 -408 -408 (cnt=5950)
+Touch(Cap): U=30794 D=30145 L=31844 R=31252
+[WWD] AFE fetch=936 wake=0 vol=0.0dB vad=1
+[MIC] RMS=393.7 (state=1, n=256)
+Touch(Cap): U=30811 D=30128 L=31855 R=31261
+[WWD] feed_samples[0..7]=169 165 166 171 168 161 170 181 (cnt=6000)
+Touch(Cap): U=30799 D=30136 L=31854 R=31261
+[MIC] RMS=505.6 (state=1, n=256)
+[WWD] AFE fetch=944 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30755 D=30141 L=31847 R=31278
+[MIC] RMS=516.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=464 464 472 465 459 458 454 461 (cnt=6050)
+Touch(Cap): U=30791 D=30141 L=31824 R=31261
+[WWD] AFE fetch=952 wake=0 vol=0.0dB vad=1
+[MIC] RMS=80.2 (state=1, n=256)
+[VE] heartbeat: state=1 rms=80.2
+Touch(Cap): U=30762 D=30133 L=31852 R=31243
+[WWD] feed_samples[0..7]=-814 -812 -810 -810 -818 -815 -814 -809 (cnt=6100)
+[MIC] RMS=264.5 (state=1, n=256)
+Touch(Cap): U=30780 D=30138 L=31843 R=31261
+[WWD] AFE fetch=960 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30760 D=30133 L=31840 R=31239
+[MIC] RMS=1086.2 (state=1, n=256)
+[WWD] feed_samples[0..7]=977 979 988 986 994 992 976 975 (cnt=6150)
+Touch(Cap): U=30783 D=30111 L=31846 R=31255
+[WWD] AFE fetch=968 wake=0 vol=0.0dB vad=1
+[MIC] RMS=245.4 (state=1, n=256)
+Touch(Cap): U=30765 D=30136 L=31847 R=31264
+[WWD] feed_samples[0..7]=-615 -615 -610 -611 -602 -600 -600 -609 (cnt=6200)
+[MIC] RMS=418.6 (state=1, n=256)
+Touch(Cap): U=30784 D=30119 L=31849 R=31291
+[WWD] AFE fetch=976 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30766 D=30129 L=31843 R=31269
+[MIC] RMS=398.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=255 263 267 266 258 260 261 269 (cnt=6250)
+Touch(Cap): U=30777 D=30134 L=31842 R=31283
+[MIC] RMS=796.3 (state=1, n=256)
+[WWD] AFE fetch=984 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30764 D=30151 L=31857 R=31260
+[WWD] feed_samples[0..7]=570 574 587 586 582 584 587 585 (cnt=6300)
+[MIC] RMS=661.0 (state=1, n=256)
+Touch(Cap): U=30793 D=30118 L=31844 R=31237
+[WWD] AFE fetch=992 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30793 D=30131 L=31849 R=31280
+[MIC] RMS=34.7 (state=1, n=256)
+[WWD] feed_samples[0..7]=-903 -907 -902 -896 -885 -877 -879 -890 (cnt=6350)
+Touch(Cap): U=30790 D=30107 L=31842 R=31264
+[MIC] RMS=152.3 (state=1, n=256)
+[WWD] AFE fetch=1000 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30789 D=30126 L=31847 R=31261
+[MIC] RMS=188.8 (state=1, n=256)
+[VE] heartbeat: state=1 rms=188.8
+[WWD] feed_samples[0..7]=140 145 142 129 125 101 81 52 (cnt=6400)
+Touch(Cap): U=30779 D=30131 L=31852 R=31252
+[WWD] AFE fetch=1008 wake=0 vol=0.0dB vad=1
+[MIC] RMS=343.6 (state=1, n=256)
+Touch(Cap): U=30763 D=30134 L=31847 R=31270
+[WWD] feed_samples[0..7]=-541 -535 -535 -539 -550 -548 -541 -546 (cnt=6450)
+[MIC] RMS=351.8 (state=1, n=256)
+Touch(Cap): U=30766 D=30144 L=31835 R=31256
+[WWD] AFE fetch=1016 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30780 D=30133 L=31837 R=31256
+[MIC] RMS=318.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=479 473 475 474 481 477 472 476 (cnt=6500)
+Touch(Cap): U=30783 D=30125 L=31845 R=31265
+[MIC] RMS=18.1 (state=1, n=256)
+[WWD] AFE fetch=1024 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30772 D=30103 L=31845 R=31269
+[WWD] feed_samples[0..7]=-842 -840 -844 -841 -833 -842 -838 -836 (cnt=6550)
+[MIC] RMS=797.2 (state=1, n=256)
+Touch(Cap): U=30778 D=30126 L=31838 R=31228
+[WWD] AFE fetch=1032 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30777 D=30134 L=31842 R=31261
+[MIC] RMS=133.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=-40 -41 -38 -38 -37 -43 -40 -34 (cnt=6600)
+Touch(Cap): U=30782 D=30123 L=31848 R=31254
+[MIC] RMS=68.5 (state=1, n=256)
+[WWD] AFE fetch=1040 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30771 D=30137 L=31831 R=31264
+[WWD] feed_samples[0..7]=47 49 52 49 51 47 47 58 (cnt=6650)
+[MIC] RMS=137.7 (state=1, n=256)
+Touch(Cap): U=30796 D=30120 L=31854 R=31271
+[WWD] AFE fetch=1048 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30763 D=30122 L=31851 R=31258
+[MIC] RMS=358.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=-63 -64 -67 -61 -66 -62 -57 -66 (cnt=6700)
+Touch(Cap): U=30782 D=30139 L=31842 R=31241
+[MIC] RMS=880.9 (state=1, n=256)
+[VE] heartbeat: state=1 rms=880.9
+Touch(Cap): U=30790 D=30130 L=31850 R=31254
+[WWD] AFE fetch=1056 wake=0 vol=0.0dB vad=1
+[MIC] RMS=774.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=667 672 677 677 674 675 677 686 (cnt=6750)
+Touch(Cap): U=30763 D=30121 L=31825 R=31226
+Touch(Cap): U=30791 D=30113 L=31855 R=31260
+[MIC] RMS=192.3 (state=1, n=256)
+[WWD] AFE fetch=1064 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-932 -934 -939 -936 -927 -925 -930 -931 (cnt=6800)
+Touch(Cap): U=30778 D=30131 L=31843 R=31261
+[MIC] RMS=847.3 (state=1, n=256)
+Touch(Cap): U=30777 D=30139 L=31852 R=31239
+[WWD] AFE fetch=1072 wake=0 vol=0.0dB vad=1
+[MIC] RMS=140.0 (state=1, n=256)
+[WWD] feed_samples[0..7]=-5 -19 -23 -16 -7 -3 -5 3 (cnt=6850)
+Touch(Cap): U=30808 D=30133 L=31847 R=31247
+Touch(Cap): U=30800 D=30110 L=31846 R=31267
+[MIC] RMS=627.9 (state=1, n=256)
+[WWD] AFE fetch=1080 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30800 D=30116 L=31849 R=31276
+[WWD] feed_samples[0..7]=1028 1023 1035 1047 1035 1034 1039 1033 (cnt=6900)
+[MIC] RMS=1378.7 (state=1, n=256)
+Touch(Cap): U=30788 D=30134 L=31841 R=31248
+[WWD] AFE fetch=1088 wake=0 vol=0.0dB vad=1
+[MIC] RMS=299.3 (state=1, n=256)
+Touch(Cap): U=30783 D=30118 L=31856 R=31255
+[WWD] feed_samples[0..7]=154 139 145 160 168 165 166 165 (cnt=6950)
+Touch(Cap): U=30758 D=30105 L=31827 R=31211
+[MIC] RMS=1126.6 (state=1, n=256)
+[WWD] AFE fetch=1096 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30761 D=30106 L=31660 R=31247
+[WWD] feed_samples[0..7]=1115 1105 1108 1116 1130 1131 1119 1125 (cnt=7000)
+[MIC] RMS=739.0 (state=1, n=256)
+Touch(Cap): U=30788 D=30137 L=31857 R=31251
+[MIC] RMS=64.9 (state=1, n=256)
+[WWD] AFE fetch=1104 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=64.9
+Touch(Cap): U=30788 D=30031 L=31656 R=31250
+[WWD] feed_samples[0..7]=75 68 62 64 65 69 74 62 (cnt=7050)
+Touch(Cap): U=30799 D=30126 L=31853 R=31261
+[MIC] RMS=955.8 (state=1, n=256)
+Touch(Cap): U=30763 D=30115 L=31842 R=31236
+[WWD] AFE fetch=1112 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-157 -153 -146 -144 -154 -148 -159 -153 (cnt=7100)
+[MIC] RMS=108.8 (state=1, n=256)
+Touch(Cap): U=30796 D=30141 L=31851 R=31258
+[MIC] RMS=1134.6 (state=1, n=256)
+Touch(Cap): U=30814 D=30140 L=31852 R=31286
+[WWD] AFE fetch=1120 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-137 -131 -124 -126 -128 -117 -117 -119 (cnt=7150)
+Touch(Cap): U=30802 D=30140 L=31856 R=31261
+[MIC] RMS=820.6 (state=1, n=256)
+Touch(Cap): U=30780 D=30114 L=31857 R=31262
+[WWD] AFE fetch=1128 wake=0 vol=0.0dB vad=1
+[MIC] RMS=702.1 (state=1, n=256)
+[WWD] feed_samples[0..7]=585 586 587 583 584 597 600 601 (cnt=7200)
+Touch(Cap): U=30793 D=30116 L=31835 R=31258
+[MIC] RMS=732.8 (state=1, n=256)
+Touch(Cap): U=30800 D=30113 L=31848 R=31271
+[WWD] AFE fetch=1136 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-566 -596 -621 -646 -670 -686 -717 -749 (cnt=7250)
+Touch(Cap): U=30798 D=30126 L=31834 R=31253
+[MIC] RMS=174.6 (state=1, n=256)
+Touch(Cap): U=30756 D=30132 L=31849 R=31235
+[MIC] RMS=111.6 (state=1, n=256)
+[WWD] AFE fetch=1144 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=289 282 293 275 279 288 287 279 (cnt=7300)
+Touch(Cap): U=30782 D=30121 L=31844 R=31249
+[MIC] RMS=575.4 (state=1, n=256)
+Touch(Cap): U=30780 D=30120 L=31843 R=31221
+[WWD] AFE fetch=1152 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=921 916 919 923 928 932 930 924 (cnt=7350)
+Touch(Cap): U=30765 D=30143 L=31839 R=31261
+[MIC] RMS=1011.8 (state=1, n=256)
+[VE] heartbeat: state=1 rms=1011.8
+Touch(Cap): U=30771 D=30147 L=31848 R=31266
+[MIC] RMS=116.2 (state=1, n=256)
+[WWD] AFE fetch=1160 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-299 -296 -279 -275 -269 -261 -272 -279 (cnt=7400)
+Touch(Cap): U=30783 D=30111 L=31840 R=31268
+[MIC] RMS=328.5 (state=1, n=256)
+Touch(Cap): U=30784 D=30136 L=31851 R=31241
+[WWD] AFE fetch=1168 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=970 972 985 996 999 982 968 973 (cnt=7450)
+Touch(Cap): U=30761 D=30136 L=31848 R=31257
+[MIC] RMS=484.3 (state=1, n=256)
+Touch(Cap): U=30783 D=30117 L=31852 R=31272
+[MIC] RMS=410.4 (state=1, n=256)
+[WWD] AFE fetch=1176 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-45 -48 -37 -25 -13 -5 -1 -6 (cnt=7500)
+Touch(Cap): U=30739 D=30101 L=31701 R=31255
+[MIC] RMS=702.7 (state=1, n=256)
+Touch(Cap): U=30806 D=30146 L=31850 R=31262
+[MIC] RMS=549.8 (state=1, n=256)
+[WWD] feed_samples[0..7]=637 627 633 638 620 622 627 629 (cnt=7550)
+[WWD] AFE fetch=1184 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30784 D=30115 L=31608 R=31254
+Touch(Cap): U=30784 D=30148 L=31849 R=31256
+[MIC] RMS=564.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=-95 -96 -106 -103 -105 -102 -109 -114 (cnt=7600)
+[WWD] AFE fetch=1192 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30781 D=30140 L=31860 R=31253
+[MIC] RMS=1017.1 (state=1, n=256)
+Touch(Cap): U=30812 D=30150 L=31858 R=31265
+[MIC] RMS=1027.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=-1739 -1739 -1735 -1738 -1732 -1727 -1717 -1711 (cnt=7650)
+[WWD] AFE fetch=1200 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30781 D=30132 L=31840 R=31253
+[MIC] RMS=448.6 (state=1, n=256)
+[VE] heartbeat: state=1 rms=448.6
+Touch(Cap): U=30772 D=30142 L=31855 R=31256
+[WWD] feed_samples[0..7]=865 870 861 855 855 852 857 864 (cnt=7700)
+[WWD] AFE fetch=1208 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30795 D=30105 L=31849 R=31265
+[MIC] RMS=397.8 (state=1, n=256)
+Touch(Cap): U=30790 D=30127 L=31853 R=31251
+[MIC] RMS=380.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-788 -780 -778 -774 -777 -781 -768 -776 (cnt=7750)
+Touch(Cap): U=30776 D=30136 L=31847 R=31270
+[WWD] AFE fetch=1216 wake=0 vol=0.0dB vad=1
+[MIC] RMS=980.5 (state=1, n=256)
+Touch(Cap): U=30781 D=30161 L=31867 R=31250
+[WWD] feed_samples[0..7]=357 356 366 369 367 373 373 380 (cnt=7800)
+Touch(Cap): U=30790 D=30127 L=31853 R=31261
+[MIC] RMS=196.1 (state=1, n=256)
+[WWD] AFE fetch=1224 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30779 D=30141 L=31862 R=31265
+[MIC] RMS=616.4 (state=1, n=256)
+[WWD] feed_samples[0..7]=-70 -59 -51 -55 -64 -56 -58 -64 (cnt=7850)
+Touch(Cap): U=30790 D=30136 L=31854 R=31277
+[WWD] AFE fetch=1232 wake=0 vol=0.0dB vad=1
+[MIC] RMS=679.7 (state=1, n=256)
+Touch(Cap): U=30800 D=30129 L=31852 R=31266
+[WWD] feed_samples[0..7]=-29 -28 -27 -20 -11 -13 -15 -16 (cnt=7900)
+[MIC] RMS=64.0 (state=1, n=256)
+Touch(Cap): U=30788 D=30155 L=31844 R=31251
+[WWD] AFE fetch=1240 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30791 D=30135 L=31848 R=31290
+[MIC] RMS=533.7 (state=1, n=256)
+[WWD] feed_samples[0..7]=250 263 260 251 244 243 244 249 (cnt=7950)
+Touch(Cap): U=30785 D=30122 L=31849 R=31238
+[WWD] AFE fetch=1248 wake=0 vol=0.0dB vad=1
+[MIC] RMS=360.7 (state=1, n=256)
+Touch(Cap): U=30779 D=30145 L=31843 R=31270
+[MIC] RMS=1098.6 (state=1, n=256)
+[VE] heartbeat: state=1 rms=1098.6
+[WWD] feed_samples[0..7]=-951 -951 -958 -962 -952 -947 -940 -937 (cnt=8000)
+Touch(Cap): U=30791 D=30128 L=31857 R=31251
+[WWD] AFE fetch=1256 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30765 D=30112 L=31852 R=31263
+[MIC] RMS=820.0 (state=1, n=256)
+Touch(Cap): U=30760 D=30122 L=31840 R=31270
+[WWD] feed_samples[0..7]=349 360 354 354 353 347 351 367 (cnt=8050)
+[MIC] RMS=252.5 (state=1, n=256)
+[WWD] AFE fetch=1264 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30784 D=30119 L=31854 R=31263
+[MIC] RMS=370.5 (state=1, n=256)
+Touch(Cap): U=30767 D=30119 L=31844 R=31259
+[WWD] feed_samples[0..7]=19 -17 -51 -82 -106 -135 -164 -202 (cnt=8100)
+[WWD] AFE fetch=1272 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30800 D=30146 L=31846 R=31259
+[MIC] RMS=1066.0 (state=1, n=256)
+Touch(Cap): U=30779 D=30115 L=31837 R=31268
+[WWD] feed_samples[0..7]=769 758 770 769 770 761 749 746 (cnt=8150)
+[MIC] RMS=863.7 (state=1, n=256)
+[WWD] AFE fetch=1280 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30776 D=29979 L=31844 R=31255
+[MIC] RMS=604.2 (state=1, n=256)
+Touch(Cap): U=30774 D=30113 L=31847 R=31254
+[WWD] feed_samples[0..7]=-1064 -1079 -1085 -1068 -1062 -1062 -1078 -1084 (cnt=8200)
+[WWD] AFE fetch=1288 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30788 D=30151 L=31847 R=31259
+[MIC] RMS=1213.1 (state=1, n=256)
+Touch(Cap): U=30762 D=30126 L=31843 R=31265
+[WWD] feed_samples[0..7]=781 772 769 770 770 777 782 780 (cnt=8250)
+[MIC] RMS=217.8 (state=1, n=256)
+Touch(Cap): U=30790 D=30121 L=31844 R=31252
+[WWD] AFE fetch=1296 wake=0 vol=0.0dB vad=1
+[MIC] RMS=875.0 (state=1, n=256)
+Touch(Cap): U=30782 D=30151 L=31846 R=31249
+[WWD] feed_samples[0..7]=-482 -490 -483 -490 -479 -487 -482 -484 (cnt=8300)
+Touch(Cap): U=30762 D=30132 L=31848 R=31247
+[MIC] RMS=825.8 (state=1, n=256)
+[WWD] AFE fetch=1304 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=825.8
+Touch(Cap): U=30772 D=30135 L=31847 R=31270
+[MIC] RMS=165.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=122 135 145 144 148 152 150 142 (cnt=8350)
+Touch(Cap): U=30778 D=30140 L=31853 R=31254
+[WWD] AFE fetch=1312 wake=0 vol=0.0dB vad=1
+[MIC] RMS=684.7 (state=1, n=256)
+Touch(Cap): U=30771 D=30126 L=31847 R=31247
+[WWD] feed_samples[0..7]=576 573 569 577 581 583 582 575 (cnt=8400)
+Touch(Cap): U=30793 D=30127 L=31845 R=31254
+[MIC] RMS=690.8 (state=1, n=256)
+[WWD] AFE fetch=1320 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30757 D=30122 L=31840 R=31248
+[MIC] RMS=83.2 (state=1, n=256)
+[WWD] feed_samples[0..7]=-754 -752 -763 -764 -764 -755 -760 -770 (cnt=8450)
+Touch(Cap): U=30775 D=30123 L=31856 R=31266
+[WWD] AFE fetch=1328 wake=0 vol=0.0dB vad=1
+[MIC] RMS=720.0 (state=1, n=256)
+Touch(Cap): U=30780 D=30147 L=31835 R=31248
+[WWD] feed_samples[0..7]=685 695 714 710 711 710 719 713 (cnt=8500)
+Touch(Cap): U=30795 D=30115 L=31844 R=31247
+[MIC] RMS=618.5 (state=1, n=256)
+[WWD] AFE fetch=1336 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30770 D=30108 L=31851 R=31264
+[MIC] RMS=73.7 (state=1, n=256)
+[WWD] feed_samples[0..7]=-56 -57 -57 -49 -53 -50 -48 -48 (cnt=8550)
+Touch(Cap): U=30765 D=29936 L=31824 R=31230
+[MIC] RMS=940.9 (state=1, n=256)
+[WWD] AFE fetch=1344 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30788 D=30128 L=31844 R=31301
+[WWD] feed_samples[0..7]=1192 1189 1197 1198 1199 1196 1202 1216 (cnt=8600)
+[MIC] RMS=766.7 (state=1, n=256)
+Touch(Cap): U=30786 D=30126 L=31854 R=31260
+[WWD] AFE fetch=1352 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30780 D=30119 L=31846 R=31279
+[MIC] RMS=636.6 (state=1, n=256)
+[VE] heartbeat: state=1 rms=636.6
+[WWD] feed_samples[0..7]=-228 -223 -217 -223 -224 -221 -217 -218 (cnt=8650)
+Touch(Cap): U=30767 D=30133 L=31845 R=31254
+[MIC] RMS=666.6 (state=1, n=256)
+[WWD] AFE fetch=1360 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30755 D=30126 L=31841 R=31255
+[WWD] feed_samples[0..7]=207 210 206 199 207 212 213 211 (cnt=8700)
+[MIC] RMS=313.9 (state=1, n=256)
+Touch(Cap): U=30800 D=30139 L=31843 R=31262
+[WWD] AFE fetch=1368 wake=0 vol=0.0dB vad=1
+[MIC] RMS=595.0 (state=1, n=256)
+Touch(Cap): U=30766 D=30143 L=31852 R=31253
+[WWD] feed_samples[0..7]=1198 1190 1194 1197 1194 1196 1192 1194 (cnt=8750)
+[MIC] RMS=346.3 (state=1, n=256)
+Touch(Cap): U=30776 D=30116 L=31844 R=31268
+[WWD] AFE fetch=1376 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30786 D=30125 L=31842 R=31255
+[MIC] RMS=1054.6 (state=1, n=256)
+[WWD] feed_samples[0..7]=-1056 -1055 -1053 -1058 -1049 -1045 -1045 -1047 (cnt=8800)
+Touch(Cap): U=30774 D=30117 L=31851 R=31251
+[MIC] RMS=236.0 (state=1, n=256)
+[WWD] AFE fetch=1384 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30785 D=30131 L=31851 R=31267
+[WWD] feed_samples[0..7]=842 838 847 852 850 854 851 860 (cnt=8850)
+[MIC] RMS=427.0 (state=1, n=256)
+Touch(Cap): U=30778 D=30118 L=31616 R=31250
+[WWD] AFE fetch=1392 wake=0 vol=0.0dB vad=1
+[MIC] RMS=2621.4 (state=1, n=256)
+Touch(Cap): U=30709 D=30111 L=31830 R=31244
+[WWD] feed_samples[0..7]=-698 -683 -676 -673 -676 -680 -680 -672 (cnt=8900)
+Touch(Cap): U=30771 D=30120 L=31854 R=31255
+[MIC] RMS=2531.6 (state=1, n=256)
+[WWD] AFE fetch=1400 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30772 D=30113 L=31862 R=31244
+[WWD] feed_samples[0..7]=128 123 124 116 109 93 72 48 (cnt=8950)
+[MIC] RMS=33.7 (state=1, n=256)
+[VE] heartbeat: state=1 rms=33.7
+Touch(Cap): U=30796 D=30119 L=31854 R=31266
+[WWD] AFE fetch=1408 wake=0 vol=0.0dB vad=1
+[MIC] RMS=290.0 (state=1, n=256)
+Touch(Cap): U=30791 D=30139 L=31842 R=31261
+[WWD] feed_samples[0..7]=462 462 467 473 477 474 454 448 (cnt=9000)
+Touch(Cap): U=30773 D=29873 L=31839 R=31252
+[MIC] RMS=827.0 (state=1, n=256)
+[WWD] AFE fetch=1416 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=87 77 73 75 77 78 80 76 (cnt=9050)
+Touch(Cap): U=30786 D=30124 L=31855 R=31238
+[MIC] RMS=52.4 (state=1, n=256)
+Touch(Cap): U=30777 D=30142 L=31837 R=31274
+[MIC] RMS=465.2 (state=1, n=256)
+[WWD] AFE fetch=1424 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30779 D=30130 L=31839 R=31259
+[WWD] feed_samples[0..7]=47 42 19 8 -1 -2 -3 -5 (cnt=9100)
+[MIC] RMS=849.9 (state=1, n=256)
+Touch(Cap): U=30798 D=30139 L=31846 R=31253
+[WWD] AFE fetch=1432 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30795 D=30136 L=31842 R=31255
+[MIC] RMS=54.0 (state=1, n=256)
+[WWD] feed_samples[0..7]=68 74 86 85 75 94 95 83 (cnt=9150)
+Touch(Cap): U=30801 D=30122 L=31842 R=31282
+[MIC] RMS=206.0 (state=1, n=256)
+[WWD] AFE fetch=1440 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30760 D=30127 L=31843 R=31264
+[WWD] feed_samples[0..7]=-876 -882 -867 -852 -836 -849 -864 -870 (cnt=9200)
+[MIC] RMS=271.6 (state=1, n=256)
+Touch(Cap): U=30775 D=30136 L=31846 R=31245
+[WWD] AFE fetch=1448 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30754 D=29995 L=31640 R=31237
+[MIC] RMS=375.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=226 231 221 211 221 218 215 224 (cnt=9250)
+Touch(Cap): U=30772 D=30142 L=31845 R=31258
+[MIC] RMS=1184.8 (state=1, n=256)
+[VE] heartbeat: state=1 rms=1184.8
+[WWD] AFE fetch=1456 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30759 D=29759 L=31780 R=31213
+[WWD] feed_samples[0..7]=-362 -368 -354 -358 -354 -349 -346 -354 (cnt=9300)
+[MIC] RMS=584.9 (state=1, n=256)
+Touch(Cap): U=30767 D=30136 L=31850 R=31256
+[MIC] RMS=39.3 (state=1, n=256)
+[WWD] AFE fetch=1464 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30780 D=29631 L=31848 R=31267
+[WWD] feed_samples[0..7]=-775 -762 -750 -709 -708 -733 -731 -702 (cnt=9350)
+Touch(Cap): U=30771 D=30125 L=31841 R=31254
+[MIC] RMS=240.8 (state=1, n=256)
+[WWD] AFE fetch=1472 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30760 D=30141 L=31828 R=31214
+[WWD] feed_samples[0..7]=783 844 809 794 799 812 760 803 (cnt=9400)
+[MIC] RMS=642.6 (state=1, n=256)
+Touch(Cap): U=30767 D=30111 L=31848 R=31256
+[MIC] RMS=432.6 (state=1, n=256)
+[WWD] AFE fetch=1480 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-545 -492 -529 -545 -543 -566 -503 -506 (cnt=9450)
+Touch(Cap): U=30785 D=30137 L=31851 R=31281
+[MIC] RMS=1259.5 (state=1, n=256)
+Touch(Cap): U=30780 D=29883 L=31692 R=31234
+[WWD] AFE fetch=1488 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=-168 -178 -116 -52 -51 -70 -74 -83 (cnt=9500)
+[MIC] RMS=726.8 (state=1, n=256)
+Touch(Cap): U=30720 D=30120 L=31825 R=31241
+Touch(Cap): U=30796 D=29647 L=31846 R=31259
+[MIC] RMS=582.5 (state=1, n=256)
+[WWD] AFE fetch=1496 wake=0 vol=0.0dB vad=1
+[WWD] feed_samples[0..7]=570 580 584 575 567 573 568 570 (cnt=9550)
+Touch(Cap): U=30688 D=30130 L=31846 R=31246
+[MIC] RMS=930.4 (state=1, n=256)
+Touch(Cap): U=30795 D=30150 L=31871 R=31242
+[MIC] RMS=551.3 (state=1, n=256)
+[WWD] AFE fetch=1504 wake=0 vol=0.0dB vad=1
+[VE] heartbeat: state=1 rms=551.3
+[WWD] feed_samples[0..7]=772 769 771 785 791 802 800 780 (cnt=9600)
+Touch(Cap): U=30775 D=30139 L=31785 R=31230
+Touch(Cap): U=30777 D=30119 L=31841 R=31266
+[MIC] RMS=200.8 (state=1, n=256)
+[WWD] feed_samples[0..7]=-827 -828 -833 -829 -818 -818 -819 -810 (cnt=9650)
+[WWD] AFE fetch=1512 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30757 D=30102 L=31706 R=31244
+[MIC] RMS=67.4 (state=1, n=256)
+Touch(Cap): U=30781 D=30145 L=31854 R=31251
+[MIC] RMS=762.9 (state=1, n=256)
+[WWD] feed_samples[0..7]=124 119 119 131 136 136 128 132 (cnt=9700)
+[WWD] AFE fetch=1520 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30796 D=30126 L=31604 R=31252
+[MIC] RMS=670.1 (state=1, n=256)
+Touch(Cap): U=30779 D=30146 L=31843 R=31305
+[WWD] feed_samples[0..7]=390 399 399 400 396 405 401 389 (cnt=9750)
+[WWD] AFE fetch=1528 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30770 D=30147 L=31851 R=31262
+[MIC] RMS=721.9 (state=1, n=256)
+Touch(Cap): U=30784 D=30123 L=31839 R=31246
+[MIC] RMS=672.5 (state=1, n=256)
+[WWD] feed_samples[0..7]=-647 -639 -634 -640 -647 -662 -694 -717 (cnt=9800)
+Touch(Cap): U=30776 D=30134 L=31852 R=31277
+[WWD] AFE fetch=1536 wake=0 vol=0.0dB vad=1
+[MIC] RMS=213.5 (state=1, n=256)
+Touch(Cap): U=30775 D=30116 L=31843 R=31252
+Touch(Cap): U=30771 D=30115 L=31841 R=31256
+[WWD] feed_samples[0..7]=-12 41 77 70 11 81 66 -35 (cnt=9850)
+[MIC] RMS=662.6 (state=1, n=256)
+[WWD] AFE fetch=1544 wake=0 vol=0.0dB vad=1
+Touch(Cap): U=30803 D=30147 L=31844 R=31256
+[MIC] RMS=529.6 (state=1, n=256)
+Touch(Cap): U=30765 D=30164 L=31846 R=31270
+[WWD] feed_samples[0..7]=-364 -351 -345 -333 -332 -336 -343 -348 (cnt=9900)
+[WWD] AFE fetch=1552 wake=0 vol=0.0dB vad=1
+[MIC] RMS=228.3 (state=1, n=256)
+[VE] heartbeat: state=1 rms=228.3
+Touch(Cap): U=30782 D=30131 L=31848 R=31252
+Touch(Cap): U=30785 D=30126 L=31849 R=31268
+[MIC] RMS=1050.3 (state=1, n=256)
+[WWD] feed_samples[0..7]=842 834 841 852 859 863 861 863 (cnt=9950)
+[WWD] AFE fetch=1560 wake=0 vol=0.0dB vad=1
+Exception in thread rx:
+Traceback (most recent call last):
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py
+", line 1081, in _bootstrap_inner
+    self._context.run(self.run)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py
+", line 1023, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\site-package
+s\serial\tools\miniterm.py", line 499, in reader
+    data = self.serial.read(self.serial.in_waiting or 1)
+                            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\site-package
+s\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError
+()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, '
+璁惧涓嶈瘑鍒鍛戒护銆?, None, 22))

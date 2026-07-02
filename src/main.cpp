@@ -42,31 +42,31 @@ void IRAM_ATTR readEncoderISR() {
 
 // 列出目录内容函数
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
-    Serial.printf("Listing directory: %s\n", dirname);
+    USBSerial.printf("Listing directory: %s\n", dirname);
 
     File root = fs.open(dirname);
     if(!root){
-        Serial.println("Failed to open directory");
+        USBSerial.println("Failed to open directory");
         return;
     }
     if(!root.isDirectory()){
-        Serial.println("Not a directory");
+        USBSerial.println("Not a directory");
         return;
     }
 
     File file = root.openNextFile();
     while(file){
         if(file.isDirectory()){
-            Serial.print("  DIR : ");
-            Serial.println(file.name());
+            USBSerial.print("  DIR : ");
+            USBSerial.println(file.name());
             if(levels){
                 listDir(fs, file.path(), levels -1);
             }
         } else {
-            Serial.print("  FILE: ");
-            Serial.print(file.name());
-            Serial.print("  SIZE: ");
-            Serial.println(file.size());
+            USBSerial.print("  FILE: ");
+            USBSerial.print(file.name());
+            USBSerial.print("  SIZE: ");
+            USBSerial.println(file.size());
         }
         file = root.openNextFile();
     }
@@ -75,12 +75,12 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
 // 系统初始化函数
 void setup() {
   // 初始化串口
-  Serial.begin(115200);
+  USBSerial.begin(115200);
   delay(1000);
-  Serial.println("\nESP32-S3 Hardware Data Output");
+  USBSerial.println("\nESP32-S3 Hardware Data Output");
   
-  Serial.printf("Flash Size: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
-  Serial.printf("PSRAM Size: %d MB\n", ESP.getPsramSize() / (1024 * 1024));
+  USBSerial.printf("Flash Size: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
+  USBSerial.printf("PSRAM Size: %d MB\n", ESP.getPsramSize() / (1024 * 1024));
 
   // 初始化手柄按键 (使用内部上拉，按下为 LOW)
   pinMode(JOY1_SW, INPUT_PULLUP);
@@ -104,25 +104,25 @@ void setup() {
   // begin(挂载点, 1位模式, 挂载失败时格式化, 频率)
   // 降低频率到 20MHz 或更低以减少干扰
   if (!SD_MMC.begin("/sdcard", true, false, 20000)) {
-    Serial.println("Card Mount Failed");
+    USBSerial.println("Card Mount Failed");
   } else {
-    Serial.println("SD Card Mounted Successfully");
+    USBSerial.println("SD Card Mounted Successfully");
     uint8_t cardType = SD_MMC.cardType();
     if(cardType == CARD_NONE){
-        Serial.println("No SD card attached");
+        USBSerial.println("No SD card attached");
     } else {
-        Serial.print("SD Card Type: ");
+        USBSerial.print("SD Card Type: ");
         if(cardType == CARD_MMC){
-            Serial.println("MMC");
+            USBSerial.println("MMC");
         } else if(cardType == CARD_SD){
-            Serial.println("SDSC");
+            USBSerial.println("SDSC");
         } else if(cardType == CARD_SDHC){
-            Serial.println("SDHC");
+            USBSerial.println("SDHC");
         } else {
-            Serial.println("UNKNOWN");
+            USBSerial.println("UNKNOWN");
         }
         uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-        Serial.printf("SD Card Size: %lluMB\n", cardSize);
+        USBSerial.printf("SD Card Size: %lluMB\n", cardSize);
         
         // 打印一级目录内容
         // listDir(SD_MMC, "/", 0);
@@ -167,7 +167,7 @@ DRAW_Terminal_Init(10, 100); // Scale 10%, Spacing 100 units
 DRAW_Terminal_Print("SYSTEM BOOT...");
 DRAW_Terminal_Print("CHECKING RAM...");
 
-  Serial.println("Hardware initialization complete. Serial output task started.");
+  USBSerial.println("Hardware initialization complete. Serial output task started.");
   pinMode(1,OUTPUT);
   pinMode(2,OUTPUT);
     digitalWrite(1,HIGH);
@@ -184,6 +184,6 @@ void loop() {
     digitalWrite(2,!ledState);
     char buffer[100];
     snprintf(buffer, sizeof(buffer), "JOY1X:%d JOY1Y:%d JOY2X:%d JOY2Y:%d S1:%d S2:%d A:%d B:%d ENC:%d", analogRead(JOY1_X), analogRead(JOY1_Y), analogRead(JOY2_X), analogRead(JOY2_Y), digitalRead(JOY1_SW), digitalRead(JOY2_SW), digitalRead(JOY_A), digitalRead(JOY_B), encoderValue);
-  Serial.println(buffer);
+  USBSerial.println(buffer);
   
 }

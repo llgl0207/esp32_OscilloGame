@@ -58,9 +58,9 @@ void Init_Audio_Buffers() {
         bufB_Y = (volatile uint16_t*)ps_malloc(MAX_SAMPLES_PER_BUF * sizeof(uint16_t));
         
         if(!bufA_L || !bufA_R || !bufA_X || !bufA_Y) {
-            Serial.println("为双缓冲区分配PSRAM失败！");
+            USBSerial.println("为双缓冲区分配PSRAM失败！");
         } else {
-            Serial.printf("在PSRAM中分配双缓冲区：每个缓冲区%d个样本\n", MAX_SAMPLES_PER_BUF);
+            USBSerial.printf("在PSRAM中分配双缓冲区：每个缓冲区%d个样本\n", MAX_SAMPLES_PER_BUF);
         }
     }
     // 重置状态

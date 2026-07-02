@@ -83,4 +83,8 @@ public:
     static NetState getState();
     static int getPeerCount();
     static const PeerInfo* getPeers();
+
+    // Suspend/Resume ESP-NOW (for AI chat)
+    static void suspend_esp_now();
+    static void resume_esp_now();
 };

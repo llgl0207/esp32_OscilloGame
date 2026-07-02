@@ -27,4 +27,9 @@
 #define EN_B 42
 #define EN_S 45
 
+// INMP441 麦克风 (I2S)
+#define MIC_SCK   47  // I2S 位时钟 (BCLK)
+#define MIC_WS    48  // I2S 声道时钟 (LRCK/WS)
+#define MIC_DATA  1   // I2S 数据输入 (DOUT) — 已改用 Serial(CH340)，GPIO1 空闲可用
+
 
