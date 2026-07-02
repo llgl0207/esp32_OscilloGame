@@ -69,6 +69,7 @@ static bool wifi_connect() {
     if (WiFi.status() == WL_CONNECTED) return true;
     USBSerial.println("Connecting WiFi...");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long t0 = millis();
     int tries = 0;
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -79,8 +80,7 @@ static bool wifi_connect() {
             return false;
         }
     }
-    USBSerial.printf("WiFi OK, IP: %s\n", WiFi.localIP().toString().c_str());
-    delay(1000);
+    USBSerial.printf("WiFi OK, IP: %s (%ums)\n", WiFi.localIP().toString().c_str(), millis() - t0);
     return true;
 }
 
@@ -509,7 +509,6 @@ done:
     resumeNonessentialTasks();
     resumeWebServer();
 
-    if (s_mic) { delete s_mic; s_mic = nullptr; }
     if (pcm_buffer) free(pcm_buffer);
     DRAW_SetStepSize(saved_step);
     ai_chat_active = false;
