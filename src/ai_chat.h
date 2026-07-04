@@ -26,9 +26,6 @@ extern volatile bool ai_chat_dirty;
 #define AI_REPLY_START_Y 1024
 #define AI_REPLY_SPACING 250
 
-// Pre-create AI Chat task at boot (suspended, resumed on wake word)
-void AI_Chat_Init();
-
 // Resume AI Chat task when triggered
 void AI_Chat_Start();
 

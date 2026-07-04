@@ -2,7 +2,7 @@
  * @file ai_chat.cpp
  * @brief AI 对话功能（示波器终端显示版）
  *
- * 流程：录音（INMP441 → PSRAM）→ 百度 ASR → DeepSeek → 示波器终端显示
+ * 流程：录音（INMP441 → PSRAM）→ 百度 ASR → DeepSeek 流式(SSE) → 示波器实时逐字显示
  *
  * 引脚：MIC_SCK=47, MIC_WS=48, MIC_DATA=1 (定义在 pins.h)
  */
@@ -24,7 +24,7 @@
 #include "network_manager.h"
 
 #define SAMPLE_RATE      16000
-#define MAX_RECORD_SEC   5       // 最长录 5 秒（PSRAM 可容纳）
+#define MAX_RECORD_SEC   10      // 最长录 10 秒（用户松手即停，上限保护）
 #define CHUNK_SIZE       512
 
 volatile bool ai_chat_active = false;
@@ -36,7 +36,8 @@ static unsigned long token_expires = 0;
 static bool     wifi_connect();
 static bool     baidu_get_token();
 static String   baidu_asr(const int16_t* pcm, size_t samples);
-static String   deepseek_chat(const String& text);
+static bool     sse_process_line(const String& line, String& accumulated);
+static String   deepseek_chat_stream(const String& text);
 static void     ai_chat_task(void* pvParameters);
 
 void AI_Chat_Start() {
@@ -171,13 +172,39 @@ static String baidu_asr(const int16_t* pcm, size_t samples) {
     return result[0].as<String>();
 }
 
-static String deepseek_chat(const String& text) {
-    // ---- 直接用 WiFiClientSecure 发原始 HTTP 请求 ----
-    // 不用 HTTPClient -> https.getStreamPtr() 在 SSL 下 available() 经常返回 0 导致空等.
-    // 用 Connection: close 避免 chunked transfer encoding, 简化响应读取.
+// 处理单行 SSE data 事件, 返回 true 表示流结束
+// accumulated: 外部传入的累加字符串引用
+// 实时更新屏幕显示
+static bool sse_process_line(const String& line, String& accumulated) {
+    if (!line.startsWith("data: ")) return false;
+    String payload = line.substring(6);
+    payload.trim();
+    if (payload == "[DONE]") return true;
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (err) return false;
+
+    JsonArray choices = doc["choices"].as<JsonArray>();
+    if (choices.size() == 0) return false;
+
+    const char* finish = choices[0]["finish_reason"];
+    const char* delta  = choices[0]["delta"]["content"];
+
+    if (delta && strlen(delta) > 0) {
+        accumulated += delta;
+        USBSerial.print(delta);  // 串口也实时输出
+        ai_show(AI_PHASE_REPLY, accumulated.c_str());
+    }
+
+    if (finish && strlen(finish) > 0) return true;
+    return false;
+}
+
+static String deepseek_chat_stream(const String& text) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(10000);
+    client.setTimeout(15000);
 
     unsigned long t0 = millis();
     if (!client.connect("api.deepseek.com", 443)) {
@@ -186,31 +213,27 @@ static String deepseek_chat(const String& text) {
     }
     USBSerial.printf("DeepSeek: connected @ %ums\n", millis() - t0);
 
-    // ---- 构造 JSON body ----
+    // ---- 构造 JSON body (stream: true) ----
     JsonDocument req_doc;
     req_doc["model"] = "deepseek-chat";
     req_doc["temperature"] = 0.7;
-    req_doc["stream"] = false;
+    req_doc["max_tokens"] = 200;
+    req_doc["stream"] = true; // ← 开启流式
 
     JsonArray messages = req_doc["messages"].to<JsonArray>();
     JsonObject sys_msg = messages.add<JsonObject>();
     sys_msg["role"] = "system";
     sys_msg["content"] =
-        "CRITICAL: OUTPUT LANGUAGE MUST BE ENGLISH ONLY. "
-        "The display terminal can ONLY render ASCII characters. "
-        "Chinese, Japanese, emoji, or any non-ASCII characters will show as garbage/corrupted on screen.\n\n"
-        "You are a helpful AI assistant controlling an oscilloscope game console. "
+        "ENGLISH ONLY. ASCII only. Device cannot render non-ASCII.\n"
+        "You control an oscilloscope game console.\n"
         "Rules:\n"
-        "1. When user wants an action, answer ONLY raw JSON with NO markdown, NO code fences, NO extra text:\n"
-        "{\"reply\":\"your message\",\"action\":\"action_name\"}\n"
-        "2. When no action is needed, reply as plain text only.\n"
-        "Available actions: "
-        "open_music, open_video, open_games, open_online, open_game_joy, open_ai_chat, open_about, "
+        "1. For actions: reply ONLY raw JSON, no markdown, no code fences:\n"
+        "{\"reply\":\"...\",\"action\":\"...\"}\n"
+        "2. No action needed: plain text only.\n"
+        "Actions: open_music, open_video, open_games, open_online, open_game_joy, open_ai_chat, open_about, "
         "start_snake, start_breakout, start_flappy, start_racing, start_runtiny, start_tank, "
-        "back, exit\n\n"
-        "STRICT: Reply in ENGLISH ONLY. Use pure ASCII. "
-        "NO Chinese. NO emoji. NO special characters. "
-        "Even if the user speaks Chinese, you MUST reply in English.";
+        "back, exit\n"
+        "ENGLISH ONLY. No Chinese/emoji.";
 
     JsonObject user_msg = messages.add<JsonObject>();
     user_msg["role"] = "user";
@@ -219,13 +242,14 @@ static String deepseek_chat(const String& text) {
     String body;
     serializeJson(req_doc, body);
 
-    // ---- 发送原始 HTTP 请求 (Connection: close 避免 chunked) ----
+    // ---- 发送原始 HTTP 请求 ----
     String http_request =
         String("POST /chat/completions HTTP/1.1\r\n") +
         "Host: api.deepseek.com\r\n" +
         "Content-Type: application/json\r\n" +
         "Authorization: Bearer " + DEEPSEEK_API_KEY + "\r\n" +
         "Content-Length: " + body.length() + "\r\n" +
+        "Accept: text/event-stream\r\n" +
         "Connection: close\r\n" +
         "\r\n" +
         body;
@@ -235,28 +259,25 @@ static String deepseek_chat(const String& text) {
 
     // ---- 读取响应头 ----
     int http_code = 0;
-    int content_length = 0;
     bool chunked = false;
     t0 = millis();
 
     while (client.connected() && millis() - t0 < 15000) {
         String line = client.readStringUntil('\n');
         line.trim();
-        if (line.length() == 0) break; // 空行 = headers 结束
+        if (line.length() == 0) break;
 
         if (line.startsWith("HTTP/")) {
             int sp1 = line.indexOf(' ');
             int sp2 = line.indexOf(' ', sp1 + 1);
             http_code = line.substring(sp1 + 1, sp2).toInt();
-        } else if (line.startsWith("Content-Length:")) {
-            content_length = line.substring(15).toInt();
         } else if (line.startsWith("Transfer-Encoding:") && line.indexOf("chunked") >= 0) {
             chunked = true;
         }
     }
 
-    USBSerial.printf("DeepSeek: HTTP %d, CL=%d, chunked=%d (%ums)\n",
-        http_code, content_length, chunked, millis() - t0);
+    USBSerial.printf("DeepSeek: HTTP %d, chunked=%d (%ums)\n",
+        http_code, chunked, millis() - t0);
 
     if (http_code != 200) {
         String err = client.readString();
@@ -265,87 +286,102 @@ static String deepseek_chat(const String& text) {
         return String();
     }
 
-    // ---- 读取响应体 ----
-    String resp;
+    // ---- SSE 流式读取 & 实时显示 ----
+    String accumulated = "";
     t0 = millis();
+    unsigned long last_data = t0;
 
-    if (content_length > 0) {
-        // 定长读取 — 最简单最可靠
-        while ((int)resp.length() < content_length && millis() - t0 < 20000) {
-            while (client.available() && (int)resp.length() < content_length) {
-                resp += (char)client.read();
-                t0 = millis(); // 有数据就刷新超时
-            }
-            if (!client.connected() && !client.available()) break;
-            if (client.available() == 0) delay(1);
-        }
-    } else if (chunked) {
-        // chunked 解码 — 逐行读取 chunk size
-        while (client.connected() && millis() - t0 < 30000) {
+    // 行缓冲区
+    String line_buf;
+
+    // 总超时 30s, 数据停滞超时 8s
+    const unsigned long TOTAL_TIMEOUT = 30000;
+    const unsigned long STALL_TIMEOUT = 8000;
+
+    if (chunked) {
+        // chunked + SSE: 逐行读取 chunk 内容
+        while (client.connected() && millis() - t0 < TOTAL_TIMEOUT) {
+            // 读 chunk size 行
             String hex_line = client.readStringUntil('\n');
             hex_line.trim();
             if (hex_line.length() == 0) continue;
             long chunk_size = strtol(hex_line.c_str(), NULL, 16);
-            if (chunk_size <= 0) break; // 最后一块
-            for (long i = 0; i < chunk_size; i++) {
-                while (!client.available() && millis() - t0 < 30000) {
+            if (chunk_size <= 0) break;
+
+            // 逐字节读 chunk data, 拼出行, 处理 SSE
+            long remain = chunk_size;
+            while (remain > 0 && millis() - t0 < TOTAL_TIMEOUT) {
+                if (millis() - last_data > STALL_TIMEOUT) {
+                    USBSerial.println("\nDeepSeek: SSE stall timeout");
+                    goto sse_done;
+                }
+                if (client.available()) {
+                    char c = client.read();
+                    remain--;
+                    last_data = millis();
+
+                    if (c == '\n') {
+                        // 一行结束, 处理 SSE
+                        line_buf.trim();
+                        if (sse_process_line(line_buf, accumulated)) {
+                            client.readStringUntil('\n'); // 跳过 chunk 尾 \r\n
+                            goto sse_done;
+                        }
+                        line_buf = "";
+                    } else if (c != '\r') {
+                        line_buf += c;
+                    }
+                } else {
                     if (!client.connected()) break;
                     delay(1);
                 }
-                if (!client.connected() && !client.available()) break;
-                resp += (char)client.read();
-                t0 = millis();
             }
-            client.readStringUntil('\n'); // 跳过尾部 \r\n
+            client.readStringUntil('\n'); // 跳过 chunk 尾部 \r\n
         }
     } else {
-        // 读直到连接关闭 (兜底)
-        while (client.connected() && millis() - t0 < 15000) {
-            while (client.available()) {
-                resp += (char)client.read();
-                t0 = millis();
-            }
-            delay(1);
+        // 非 chunked (fallback): 逐字节读到连接关闭
+        while (client.connected() && millis() - t0 < TOTAL_TIMEOUT) {
+            if (millis() - last_data > STALL_TIMEOUT) break;
+            if (client.available()) {
+                char c = client.read();
+                last_data = millis();
+                if (c == '\n') {
+                    line_buf.trim();
+                    if (sse_process_line(line_buf, accumulated)) { break; }
+                    line_buf = "";
+                } else if (c != '\r') {
+                    line_buf += c;
+                }
+            } else { delay(1); }
         }
-        // 读干净
-        while (client.available()) resp += (char)client.read();
+        // 读残余
+        while (client.available()) {
+            char c = client.read();
+            if (c == '\n') {
+                line_buf.trim();
+                if (sse_process_line(line_buf, accumulated)) break;
+                line_buf = "";
+            } else if (c != '\r') {
+                line_buf += c;
+            }
+        }
     }
 
+sse_done:
     client.stop();
-    USBSerial.printf("DeepSeek: body %u bytes (%ums)\n", resp.length(), millis() - t0);
+    USBSerial.printf("\nDeepSeek: SSE done, %u chars, %ums\n",
+        accumulated.length(), millis() - t0);
 
-    if (resp.length() == 0) {
-        USBSerial.println("DeepSeek: empty body");
+    if (accumulated.length() == 0) {
+        USBSerial.println("DeepSeek: empty stream");
         return String();
     }
-
-    // ---- 解析 JSON ----
-    // 深色: 有时服务器在 chunked 模式下在 body 前插了额外数据,
-    // 尝试找到第一个 { 来定位 JSON
-    int json_start = resp.indexOf('{');
-    if (json_start > 0) resp = resp.substring(json_start);
-
-    JsonDocument resp_doc;
-    DeserializationError err = deserializeJson(resp_doc, resp);
-    if (err) {
-        USBSerial.printf("DeepSeek: JSON fail: %s\n", err.c_str());
-        USBSerial.println("Body(500): " + resp.substring(0, 500));
-        return String();
-    }
-
-    JsonArray choices = resp_doc["choices"].as<JsonArray>();
-    if (choices.size() == 0) {
-        USBSerial.println("DeepSeek: no choices");
-        return String();
-    }
-
-    String reply_content = choices[0]["message"]["content"].as<String>();
 
     USBSerial.println("\n=== DeepSeek RAW ===");
-    USBSerial.println(reply_content);
+    USBSerial.println(accumulated);
     USBSerial.println("=== END RAW ===\n");
 
-    return reply_content;
+    return accumulated;
 }
 
 static void ai_chat_task(void* pvParameters) {
@@ -452,11 +488,11 @@ static void ai_chat_task(void* pvParameters) {
     }
     USBSerial.printf("You: %s\n", recognized.c_str());
 
-    // ---- DeepSeek ----
-    ai_show(AI_PHASE_THINKING, "Thinking...");
+    // ---- DeepSeek (流式 SSE: 边生成边显示) ----
+    ai_show(AI_PHASE_REPLY, "");
     // 释放 DMA 内存 (BLE) 给 SSL 用
     deinitHardwareDMA();
-    reply = deepseek_chat(recognized);
+    reply = deepseek_chat_stream(recognized);
     // 注意: reinitHardwareDMA 在 done: 标签统一恢复，确保异常路径也能恢复 BLE
     if (reply.length() == 0) {
         term_println("ERROR: DeepSeek failed");
@@ -464,17 +500,21 @@ static void ai_chat_task(void* pvParameters) {
         voice_action = VC_NONE;
         has_action = false;
         // 仍然显示失败信息让用户看到
-        ai_show(AI_PHASE_REPLY, "DeepSeek failed, check serial");
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        ai_show(AI_PHASE_REPLY, "DeepSeek timed out");
+        vTaskDelay(pdMS_TO_TICKS(1500));
         goto done;
     }
 
     // ---- 解析 JSON action（若有） ----
-    reply = VC_ParseReply(reply);
-    has_action = (voice_action != VC_NONE);
-
-    // ---- Display reply ----
-    ai_show(AI_PHASE_REPLY, reply.c_str());
+    // 用累积的完整回复解析 action
+    {
+        String parsed = VC_ParseReply(reply);
+        has_action = (voice_action != VC_NONE);
+        // 如果流式显示的内容被 action JSON 覆盖了, 重新设置显示文本
+        if (has_action && parsed.length() > 0) {
+            ai_show(AI_PHASE_REPLY, parsed.c_str());
+        }
+    }
 
     USBSerial.println("\n" + String(50, '-'));
     USBSerial.println("AI Chat Done");
