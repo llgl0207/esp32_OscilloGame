@@ -5,6 +5,8 @@
 #include "FS.h"
 #include "SD_MMC.h"
 #include "web_server.h"
+#include "ai_chat.h"
+#include "voice_control.h"
 #include <Arduino.h>
 #include <stdio.h>
 #include <vector>
@@ -197,6 +199,56 @@ static void serialOutputTask(void* pvParameters);
 static void guiTask(void* pvParameters);
 static void joystickCheckTask(void* pvParameters);
 
+// --- 非必要任务暂停/恢复 (AI Chat 用) ---
+// 暂停 JoystickCheckTask + SerialOutputTask + loopTask, 保留 GuiTask (画 AI Chat 输出)
+void suspendNonessentialTasks() {
+    if (s_joystickCheckTaskHandle) vTaskSuspend(s_joystickCheckTaskHandle);
+    if (s_serialOutputTaskHandle) vTaskSuspend(s_serialOutputTaskHandle);
+    // Arduino loopTask 打印 JOY 数据，也必须暂停
+    TaskHandle_t loopTask = xTaskGetHandle("loopTask");
+    if (loopTask) vTaskSuspend(loopTask);
+}
+
+void resumeNonessentialTasks() {
+    if (s_joystickCheckTaskHandle) vTaskResume(s_joystickCheckTaskHandle);
+    if (s_serialOutputTaskHandle) vTaskResume(s_serialOutputTaskHandle);
+    TaskHandle_t loopTask = xTaskGetHandle("loopTask");
+    if (loopTask) vTaskResume(loopTask);
+}
+
+// --- 硬件 DMA 外设去初始化/重初始化 (AI Chat SSL 用) ---
+// DeepSeek HTTPS (mbedTLS) 需要 esp-sha 硬件分配 DMA 缓冲; BLE 控制器
+// 抢占同一块 DMA 连续内存池, 必须临时释放.
+// SD_MMC 使用 PSRAM 而非内部 DMA 池, 不需要释放.
+// IMPORTANT: BLEDevice::deinit() 只能在 BLE 已初始化时调用, 否则会破坏 WiFi/BT 共存状态.
+void deinitHardwareDMA() {
+    bool ble_was_active = BLEDevice::getInitialized();
+
+    // Step 1: 销毁 BLE Mouse 对象 (如有)
+    if (bleMouse) {
+        bleMouse->end();
+        delete bleMouse;
+        bleMouse = nullptr;
+    }
+    // Step 2: 仅在 BLE 已初始化时释放控制器 DMA 内存
+    if (ble_was_active) {
+        BLEDevice::deinit(true);
+    }
+
+    // Step 3: SD_MMC 不释放 — 其 SDIO 用 PSRAM 而非内部 DMA 池，不影响 SSL
+    // 且 end() 后需要硬件电源循环才能重新 init，不可靠
+
+    USBSerial.printf("DMA deinit done (BLE was %s). Heap: %u\n",
+        ble_was_active ? "active" : "inactive", ESP.getFreeHeap());
+}
+
+void reinitHardwareDMA() {
+    // SD_MMC 未做 end()，不需要重新挂载
+    // BLE: 由 joystickCheckTask 在恢复后自动重新初始化.
+    // joystickCheckTask 检测到 bleMouse==nullptr 时会新建 BleMouse 实例.
+    USBSerial.printf("DMA reinit done (SD_MMC preserved). Heap: %u\n", ESP.getFreeHeap());
+}
+
 void initTasks() {
   // 创建摇杆检查任务
   if (!s_joystickCheckTaskHandle) {
@@ -216,7 +268,7 @@ void initTasks() {
     xTaskCreatePinnedToCore(
       serialOutputTask,
       "SerialOutputTask",
-      2048,
+      8192,
       nullptr,
       1,
       &s_serialOutputTaskHandle,
@@ -260,6 +312,7 @@ enum UI_State {
     UI_RACING,
     UI_RUNTINY,
     UI_TANK, // 新增坦克游戏
+    UI_AI_CHAT,
     UI_ABOUT
 };
 
@@ -268,11 +321,12 @@ static const char* main_menu_items[] = {
     "Video",
     "Games",
     "Online", 
-    "Game Joy", // 新增项目
+    "Game Joy",
+    "AI Chat",
     "Settings",
     "About"
 };
-static const int main_menu_count = 7;
+static const int main_menu_count = 8;
 
 static const char* games_menu_items[] = {
     "Snake",
@@ -947,12 +1001,40 @@ void Update_Tank_Game(void) {
     Network_Manager::sendGameData(data);
 }
 
+// --- 打印 SD 卡完整目录树（用于排查路径问题） ---
+void Print_Dir_Tree(File dir, int depth) {
+    // 非递归遍历：用 vector 模拟栈
+    struct DirFrame {
+        File dirFile;
+        int d;
+    };
+    std::vector<DirFrame> stack;
+    stack.push_back({dir, depth});
+    
+    while(!stack.empty()) {
+        DirFrame& frame = stack.back();
+        File file = frame.dirFile.openNextFile();
+        if(!file) {
+            stack.pop_back();
+            continue;
+        }
+        for(int i=0; i<frame.d; i++) USBSerial.print("  ");
+        if(file.isDirectory()){
+            USBSerial.printf("DIR: %s/\n", file.path());
+            stack.push_back({file, frame.d + 1});
+        } else {
+            USBSerial.printf("FILE: %s (%d)\n", file.path(), file.size());
+        }
+    }
+}
+
 // --- 音乐逻辑 ---
 void Scan_Music_Files() {
     music_files.clear();
-    File root = SD_MMC.open("/music");
+    // 先扫描一次构建文件列表
+    File root = SD_MMC.open("/电赛/SD卡电赛文件/music");
     if(!root || !root.isDirectory()){
-        Serial.println("Failed to open /music directory");
+        USBSerial.println("Failed to open /电赛/SD卡电赛文件/music");
         return;
     }
     File file = root.openNextFile();
@@ -961,56 +1043,59 @@ void Scan_Music_Files() {
             String fname = file.name();
             if(fname.endsWith(".wav") || fname.endsWith(".WAV")){
                 music_files.push_back(fname.c_str());
+                USBSerial.printf("Music WAV: %s\n", fname.c_str());
             }
         }
         file = root.openNextFile();
     }
     music_file_count = music_files.size();
+    USBSerial.printf("Found %d music files\n", music_file_count);
+    USBSerial.println("BACK");
 }
 
 bool Play_Music(const char* filename) {
-    String path = "/music/" + String(filename);
+    String path = "/电赛/SD卡电赛文件/music/" + String(filename);
     audioFile = SD_MMC.open(path.c_str());
     if(!audioFile) {
-        Serial.println("Failed to open audio file");
+        USBSerial.println("Failed to open audio file");
         return false;
     }
     
     // 读取 WAV 头
     uint8_t header[44];
     if(audioFile.read(header, 44) != 44) {
-        Serial.println("Failed to read WAV header");
+        USBSerial.println("Failed to read WAV header");
         audioFile.close();
         return false;
     }
     
     // 检查 RIFF
     if(header[0] != 'R' || header[1] != 'I' || header[2] != 'F' || header[3] != 'F') {
-        Serial.println("Not a RIFF file");
+        USBSerial.println("Not a RIFF file");
         audioFile.close();
         return false;
     }
     
     // 获取采样率 (偏移 24, 4 字节)
     uint32_t sampleRate = header[24] | (header[25] << 8) | (header[26] << 16) | (header[27] << 24);
-    Serial.printf("Sample Rate: %d\n", sampleRate);
+    USBSerial.printf("Sample Rate: %d\n", sampleRate);
     
     // 获取通道数 (偏移 22, 2 字节)
     uint16_t channels = header[22] | (header[23] << 8);
-    Serial.printf("Channels: %d\n", channels);
+    USBSerial.printf("Channels: %d\n", channels);
     music_channels = channels;
     
     // 获取每样本位数 (偏移 34, 2 字节)
     uint16_t bitsPerSample = header[34] | (header[35] << 8);
-    Serial.printf("Bits: %d\n", bitsPerSample);
+    USBSerial.printf("Bits: %d\n", bitsPerSample);
     
     if(bitsPerSample != 16) {
-        Serial.println("Only 16-bit WAV supported");
+        USBSerial.println("Only 16-bit WAV supported");
         audioFile.close();
         return false;
     }
     
-    Serial.printf("File Size: %d\n", audioFile.size());
+    USBSerial.printf("File Size: %d\n", audioFile.size());
     
     is_playing = true;
     Set_Player_Mode(1); // 1=音频
@@ -1027,9 +1112,9 @@ void Stop_Music() {
 // --- 视频逻辑 ---
 void Scan_Video_Files() {
     video_files.clear();
-    File root = SD_MMC.open("/video");
+    File root = SD_MMC.open("/电赛/SD卡电赛文件/video");
     if(!root || !root.isDirectory()){
-        Serial.println("Failed to open /video directory");
+        USBSerial.println("Failed to open /电赛/SD卡电赛文件/video");
         return;
     }
     File file = root.openNextFile();
@@ -1038,62 +1123,65 @@ void Scan_Video_Files() {
             String fname = file.name();
             if(fname.endsWith(".wav") || fname.endsWith(".WAV")){
                 video_files.push_back(fname.c_str());
+                USBSerial.printf("Video WAV: %s\n", fname.c_str());
             }
         }
         file = root.openNextFile();
     }
     video_file_count = video_files.size();
+    USBSerial.printf("Found %d video files\n", video_file_count);
+    USBSerial.println("BACK");
 }
 
 bool Play_Video(const char* filename) {
-    String path = "/video/" + String(filename);
+    String path = "/电赛/SD卡电赛文件/video/" + String(filename);
     videoFile = SD_MMC.open(path.c_str());
     if(!videoFile) {
-        Serial.println("Failed to open video file");
+        USBSerial.println("Failed to open video file");
         return false;
     }
     
     // 读取 WAV 头
     uint8_t header[44];
     if(videoFile.read(header, 44) != 44) {
-        Serial.println("Failed to read WAV header");
+        USBSerial.println("Failed to read WAV header");
         videoFile.close();
         return false;
     }
     
     // 检查 RIFF
     if(header[0] != 'R' || header[1] != 'I' || header[2] != 'F' || header[3] != 'F') {
-        Serial.println("Not a RIFF file");
+        USBSerial.println("Not a RIFF file");
         videoFile.close();
         return false;
     }
     
     // 获取采样率 (偏移 24, 4 字节)
     uint32_t sampleRate = header[24] | (header[25] << 8) | (header[26] << 16) | (header[27] << 24);
-    Serial.printf("Sample Rate: %d\n", sampleRate);
+    USBSerial.printf("Sample Rate: %d\n", sampleRate);
     
     // 获取通道数 (偏移 22, 2 字节)
     uint16_t channels = header[22] | (header[23] << 8);
-    Serial.printf("Channels: %d\n", channels);
+    USBSerial.printf("Channels: %d\n", channels);
     video_channels = channels;
     
     // 获取每样本位数 (偏移 34, 2 字节)
     uint16_t bitsPerSample = header[34] | (header[35] << 8);
-    Serial.printf("Bits: %d\n", bitsPerSample);
+    USBSerial.printf("Bits: %d\n", bitsPerSample);
     
     if(bitsPerSample != 16) {
-        Serial.println("Only 16-bit WAV supported");
+        USBSerial.println("Only 16-bit WAV supported");
         videoFile.close();
         return false;
     }
     
     if(channels != 4) {
-        Serial.println("Only 4-channel WAV supported for Video");
+        USBSerial.println("Only 4-channel WAV supported for Video");
         videoFile.close();
         return false;
     }
     
-    Serial.printf("File Size: %d\n", videoFile.size());
+    USBSerial.printf("File Size: %d\n", videoFile.size());
     
     is_video_playing = true;
     Set_Player_Mode(2); // 2=视频
@@ -1130,7 +1218,7 @@ static void guiTask(void* pvParameters) {
     touch_base_left /= 20;
     touch_base_right /= 20;
     
-    Serial.printf("Calibrated Touch Base: U=%d D=%d L=%d R=%d\n", 
+    USBSerial.printf("Calibrated Touch Base: U=%d D=%d L=%d R=%d\n", 
         touch_base_up, touch_base_down, touch_base_left, touch_base_right);
     
     // 定义增量
@@ -1210,6 +1298,120 @@ static void guiTask(void* pvParameters) {
             }
         }
 
+        // ---- 语音控制动作执行 ----
+        if (voice_pending) {
+            voice_pending = false;
+            VC_Action vc = voice_action;
+            voice_action = VC_NONE;
+
+            switch (vc) {
+                case VC_OPEN_MUSIC:
+                    ui_state = UI_MENU_MUSIC;
+                    Scan_Music_Files();
+                    menu_index = 0; last_menu_index = -1;
+                    continue;
+
+                case VC_OPEN_VIDEO:
+                    ui_state = UI_MENU_VIDEO;
+                    Scan_Video_Files();
+                    menu_index = 0; last_menu_index = -1;
+                    continue;
+
+                case VC_OPEN_GAMES:
+                    ui_state = UI_MENU_GAMES;
+                    menu_index = 0; last_menu_index = -1;
+                    continue;
+
+                case VC_OPEN_ONLINE:
+                    ui_state = UI_MENU_ONLINE;
+                    Network_Manager::startDiscovery();
+                    menu_index = 0; last_menu_index = -1;
+                    continue;
+
+                case VC_OPEN_GAME_JOY:
+                    ui_state = UI_GAME_JOY;
+                    last_menu_index = -1;
+                    continue;
+
+                case VC_OPEN_AI_CHAT:
+                    DRAW_Clear();
+                    AI_Chat_Start();
+                    ui_state = UI_AI_CHAT;
+                    last_menu_index = -1;
+                    updateWebUIStatus("AI Chat active...");
+                    continue;
+
+                case VC_OPEN_ABOUT:
+                    ui_state = UI_ABOUT;
+                    last_menu_index = -1;
+                    continue;
+
+                case VC_START_SNAKE:
+                    ui_state = UI_SNAKE;
+                    Init_Snake_Game();
+                    continue;
+
+                case VC_START_BREAKOUT:
+                    ui_state = UI_BREAKOUT;
+                    Init_Breakout_Game();
+                    continue;
+
+                case VC_START_FLAPPY:
+                    ui_state = UI_FLAPPY;
+                    Init_Flappy_Game();
+                    continue;
+
+                case VC_START_RACING:
+                    ui_state = UI_RACING;
+                    Init_Racing_Game();
+                    continue;
+
+                case VC_START_RUNTINY:
+                    ui_state = UI_RUNTINY;
+                    Init_RunTiny_Game();
+                    continue;
+
+                case VC_START_TANK:
+                    ui_state = UI_TANK;
+                    Init_Tank_Game(0, true);
+                    continue;
+
+                case VC_BACK:
+                    // 根据当前状态决定返回目标
+                    switch (ui_state) {
+                        case UI_MENU_MUSIC:
+                        case UI_MENU_VIDEO:
+                        case UI_MENU_GAMES:
+                        case UI_MENU_ONLINE:
+                        case UI_GAME_JOY:
+                        case UI_ABOUT:
+                            ui_state = UI_MENU_MAIN;
+                            menu_index = 0; last_menu_index = -1;
+                            break;
+                        case UI_MENU_MAIN:
+                            break; // 已在主菜单
+                        default:
+                            // 游戏中 → 返回上级菜单
+                            ui_state = UI_MENU_GAMES;
+                            menu_index = 0; last_menu_index = -1;
+                            Network_Manager::endGame(0);
+                            break;
+                    }
+                    DRAW_Clear();
+                    continue;
+
+                case VC_EXIT:
+                    ui_state = UI_MENU_MAIN;
+                    menu_index = 0; last_menu_index = -1;
+                    Network_Manager::endGame(0);
+                    DRAW_Clear();
+                    continue;
+
+                default:
+                    break;
+            }
+        }
+
         // 2. 状态机
         bool rebuild = false;
 
@@ -1263,7 +1465,15 @@ static void guiTask(void* pvParameters) {
                     ui_state = UI_GAME_JOY;
                     last_menu_index = -1;
                     continue;
-                } else if (menu_index == 6) {
+                } else if (menu_index == 5) {
+                    // AI Chat — 拉起对话，独占屏幕
+                    DRAW_Clear();
+                    AI_Chat_Start();
+                    ui_state = UI_AI_CHAT;
+                    last_menu_index = -1;
+                    updateWebUIStatus("AI Chat active...");
+                    continue;
+                } else if (menu_index == 7) {
                     ui_state = UI_ABOUT;
                     last_menu_index = -1; // 确保重绘
                     continue;
@@ -1302,6 +1512,142 @@ static void guiTask(void* pvParameters) {
                 }
                 updateWebUIStatus(status);
                 last_menu_index = menu_index;
+            }
+
+        } else if (ui_state == UI_AI_CHAT) {
+            // 检测 ai_chat_active 状态 + 卡死保护
+            {
+                static unsigned long ai_chat_stuck_time = 0;
+                if (!ai_chat_active) {
+                    ai_chat_stuck_time = 0;
+                    // 防抖：重置按钮状态，避免释放上升沿触发选择
+                    btn_state = digitalRead(EN_S);
+                    last_btn_state = btn_state;
+                    last_btn_time = millis();
+                    ui_state = UI_MENU_MAIN;
+                    menu_index = 5; // 记住此前在 AI Chat 项上
+                    last_menu_index = -1;
+                    DRAW_Clear();
+                    updateWebUIStatus("MENU: MAIN");
+                    continue;
+                }
+                // 任务启动后首次检测
+                if (ai_chat_stuck_time == 0) {
+                    ai_chat_stuck_time = millis();
+                }
+                // 超时兜底（5 分钟），不用按键触发——按键留给 AI Chat 任务本身用
+                bool ai_chat_force_exit = false;
+                if (millis() - ai_chat_stuck_time > 300000) {
+                    ai_chat_force_exit = true;
+                }
+                if (ai_chat_force_exit) {
+                    ai_chat_stuck_time = 0;
+                    ai_chat_active = false;
+                    btn_state = digitalRead(EN_S);
+                    last_btn_state = btn_state;
+                    last_btn_time = millis();
+                    ui_state = UI_MENU_MAIN;
+                    menu_index = 5;
+                    last_menu_index = -1;
+                    DRAW_Clear();
+                    updateWebUIStatus("MENU: MAIN");
+                    continue;
+                }
+            }
+            // AI Chat 活动期间 — guiTask 按阶段渲染
+            {
+                if (ai_chat_dirty) {
+                    DRAW_Clear();
+                    DRAW_AddRect(0, 0, 2047, 2047); // 全屏边框
+
+                    const int scale = AI_SCALE;
+                    const int margin_x = 50;
+                    const int max_width = 2047 - margin_x * 2; // 文本可用像素宽（两侧留边）
+                    const int max_lines = 7;
+
+                    // ---- 像素精确 + 按单词自动换行 ----
+                    static char s_wrapped[7][256];
+                    int line_count = 0;
+                    int src_idx = 0;
+
+                    while (ai_chat_display_text[src_idx] && line_count < max_lines) {
+                        // 跳过前导空格
+                        while (ai_chat_display_text[src_idx] == ' ') src_idx++;
+                        if (!ai_chat_display_text[src_idx]) break;
+
+                        // 显式换行符 → 断行
+                        if (ai_chat_display_text[src_idx] == '\n') {
+                            s_wrapped[line_count][0] = '\0';
+                            line_count++;
+                            src_idx++;
+                            continue;
+                        }
+
+                        int line_start = src_idx;
+                        int line_pix = 0;
+                        int last_fit_end = src_idx;   // 最后一个能放下的单词末尾
+                        bool had_word = false;
+
+                        while (ai_chat_display_text[src_idx] && ai_chat_display_text[src_idx] != '\n') {
+                            int word_start = src_idx;
+                            while (ai_chat_display_text[src_idx] &&
+                                   ai_chat_display_text[src_idx] != ' ' &&
+                                   ai_chat_display_text[src_idx] != '\n') {
+                                src_idx++;
+                            }
+                            int word_end = src_idx;   // 此时在空格/换行/结尾上
+
+                            // 测单词像素宽
+                            char saved = ai_chat_display_text[word_end];
+                            ai_chat_display_text[word_end] = '\0';
+                            int word_w = DRAW_CalcStringWidth(&ai_chat_display_text[word_start], 0, scale);
+                            ai_chat_display_text[word_end] = saved;
+
+                            int sep_w = had_word ? DRAW_CalcCharWidth(' ', 0, scale) : 0;
+
+                            if (line_pix + sep_w + word_w <= max_width) {
+                                // 单词能放下
+                                line_pix += sep_w + word_w;
+                                last_fit_end = word_end;
+                                had_word = true;
+                                // 跳过后续空格
+                                while (ai_chat_display_text[src_idx] == ' ') src_idx++;
+                            } else if (!had_word) {
+                                // 超长单词（一个词就超一行），至少放一个字符
+                                src_idx = word_start + 1;
+                                last_fit_end = src_idx;
+                                break;
+                            } else {
+                                // 单词放不下 → 留到下一行
+                                src_idx = word_start;  // 回退到当前词开头
+                                break;
+                            }
+                        }
+
+                        // 跳过换行符
+                        if (ai_chat_display_text[src_idx] == '\n') src_idx++;
+
+                        // 复制本行
+                        int len = last_fit_end - line_start;
+                        if (len > 255) len = 255;
+                        strncpy(s_wrapped[line_count], &ai_chat_display_text[line_start], len);
+                        s_wrapped[line_count][len] = '\0';
+                        line_count++;
+                    }
+
+                    // 渲染——居中整个文字块
+                    int y = AI_CENTER_Y + (line_count - 1) * AI_REPLY_SPACING / 2;
+                    for (int i = 0; i < line_count; i++) {
+                        if (y < 50) break;
+                        DRAW_AddString(s_wrapped[i], 0, margin_x, y, scale, scale);
+                        y -= AI_REPLY_SPACING;
+                    }
+
+                    ai_chat_dirty = false;
+                }
+
+                // 禁用跑马灯
+                DRAW_DisableScroll();
             }
 
         } else if (ui_state == UI_GAME_JOY) {
@@ -1583,7 +1929,7 @@ static void guiTask(void* pvParameters) {
             }
 
             // 进入阻塞循环
-            Serial.println("Entering Music Loop");
+            USBSerial.println("Entering Music Loop");
             
             // 重置去抖动计时器
             unsigned long low_start = 0;
@@ -1592,12 +1938,12 @@ static void guiTask(void* pvParameters) {
             // 64KB = 65536 字节
             uint8_t *read_buf = (uint8_t*)ps_malloc(65536);
             if(read_buf == NULL) {
-                Serial.println("Failed to allocate 64KB read buffer!");
+                USBSerial.println("Failed to allocate 64KB read buffer!");
                 is_playing = false;
             }
 
             // 音量控制初始化
-            static int volume = 1; // 0-256. 默认 1/256
+            static int volume = 256; // 0-256. 默认最大
             int32_t last_enc = encoderValue;
             
             while (is_playing && audioFile) {
@@ -1729,7 +2075,7 @@ static void guiTask(void* pvParameters) {
                 if (digitalRead(EN_S) == LOW) {
                     if (low_start == 0) low_start = millis();
                     if (millis() - low_start > 50) { // Stable for 50ms
-                        Serial.println("Button Exit (Stable)");
+                        USBSerial.println("Button Exit (Stable)");
                         Stop_Music();
                         ui_state = UI_MENU_MUSIC;
                         rebuild = true;
@@ -1746,7 +2092,7 @@ static void guiTask(void* pvParameters) {
                 // 4. Check EOF
                 if(!audioFile.available() && Is_Buf_A_Free() && Is_Buf_B_Free()) {
                     // Only exit if file is done AND both buffers are empty (played out)
-                    Serial.println("EOF Exit");
+                    USBSerial.println("EOF Exit");
                     Stop_Music();
                     ui_state = UI_MENU_MUSIC;
                     rebuild = true;
@@ -1758,7 +2104,7 @@ static void guiTask(void* pvParameters) {
             }
             
             if(read_buf) free(read_buf);
-            Serial.println("Exited Music Loop");
+            USBSerial.println("Exited Music Loop");
             
         } else if (ui_state == UI_MENU_VIDEO) {
             // 导航
@@ -1844,17 +2190,17 @@ static void guiTask(void* pvParameters) {
                 rebuild = true;
             }
 
-            Serial.println("Entering Video Loop");
+            USBSerial.println("Entering Video Loop");
             unsigned long low_start = 0;
             
             uint8_t *read_buf = (uint8_t*)ps_malloc(65536);
             if(read_buf == NULL) {
-                Serial.println("Failed to allocate 64KB read buffer!");
+                USBSerial.println("Failed to allocate 64KB read buffer!");
                 is_video_playing = false;
             }
 
             // 音量控制初始化 (仅用于音频通道)
-            static int volume = 1; 
+            static int volume = 256; // 0-256. 默认最大
             int32_t last_enc = encoderValue;
             
             while (is_video_playing && videoFile) {
@@ -1982,7 +2328,7 @@ static void guiTask(void* pvParameters) {
                 if (digitalRead(EN_S) == LOW) {
                     if (low_start == 0) low_start = millis();
                     if (millis() - low_start > 50) { 
-                        Serial.println("Button Exit (Stable)");
+                        USBSerial.println("Button Exit (Stable)");
                         Stop_Video();
                         ui_state = UI_MENU_VIDEO;
                         rebuild = true;
@@ -1996,7 +2342,7 @@ static void guiTask(void* pvParameters) {
                 
                 // 4. Check EOF
                 if(!videoFile.available() && Is_Buf_A_Free() && Is_Buf_B_Free()) {
-                    Serial.println("EOF Exit");
+                    USBSerial.println("EOF Exit");
                     Stop_Video();
                     ui_state = UI_MENU_VIDEO;
                     rebuild = true;
@@ -2007,7 +2353,7 @@ static void guiTask(void* pvParameters) {
             }
             
             if(read_buf) free(read_buf);
-            Serial.println("Exited Video Loop");
+            USBSerial.println("Exited Video Loop");
             
         } else if (ui_state == UI_MENU_ONLINE) {
             // 更新网络
@@ -2565,15 +2911,25 @@ static void guiTask(void* pvParameters) {
 static void serialOutputTask(void* pvParameters) {
   unsigned long lastOutputTime = 0;
   const unsigned long outputInterval = 200; // 200ms 间隔
-  //循环输出触摸值
+  unsigned long lastTreePrint = 0;
+  const unsigned long treePrintInterval = 5000; // 每隔 5 秒打印一次目录树
   for (;;) {
-    if (millis() - lastOutputTime >= outputInterval) {
-      lastOutputTime = millis();
-      Serial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
+    unsigned long now = millis();
+    if (now - lastOutputTime >= outputInterval) {
+      lastOutputTime = now;
+      USBSerial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
         touchRead(TOUCH_UP), 
         touchRead(TOUCH_DOWN), 
         touchRead(TOUCH_LEFT), 
         touchRead(TOUCH_RIGHT));
+    }
+    // 反复打印 SD 卡目录树，方便随时打开串口查看
+    if (now - lastTreePrint >= treePrintInterval && !is_playing && !is_video_playing) {
+      lastTreePrint = now;
+      USBSerial.println("\n=== SD Card Full Directory Tree ===");
+      File rt = SD_MMC.open("/");
+      if(rt && rt.isDirectory()) Print_Dir_Tree(rt, 0);
+      USBSerial.println("=== End ===\n");
     }
     vTaskDelay(pdMS_TO_TICKS(50));
   }

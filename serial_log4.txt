@@ -1,0 +1,78 @@
+﻿python : --- Miniterm on COM10  115200,8,N,1 ---
+所在位置 行:1 字符: 1
++ python -m serial.tools.miniterm COM10 115200 2>&1 | Out-File -Encodin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--- Miniterm on COM10  115200,8,N 
+   ,1 ---:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H ---
+Touch(Cap): U=30772 D=30118 L=31820 R=31234
+Touch(Cap): U=30764 D=30100 L=31807 R=31222
+Touch(Cap): U=30740 D=30070 L=31816 R=31212
+Touch(Cap): U=30768 D=30115 L=31836 R=31238
+Touch(Cap): U=30738 D=30111 L=31827 R=31228
+Touch(Cap): U=30745 D=30085 L=31820 R=31208
+Touch(Cap): U=30768 D=30108 L=31821 R=31211
+Touch(Cap): U=30751 D=30088 L=31831 R=31228
+[WWD] AFE feed=30 wake=0 vol=0.0dB vad=0 ret=-1
+[MIC] RMS=671.2 (state=1, n=256)
+Touch(Cap): U=30769 D=30088 L=31808 R=31226
+Touch(Cap): U=30772 D=30083 L=31819 R=31254
+Touch(Cap): U=30766 D=30099 L=31846 R=31255
+Touch(Cap): U=30751 D=30083 L=31721 R=31213
+Touch(Cap): U=30757 D=30105 L=31826 R=31232
+Touch(Cap): U=30747 D=30113 L=31830 R=31237
+Touch(Cap): U=30743 D=30116 L=31823 R=31241
+Touch(Cap): U=30778 D=30090 L=31837 R=31245
+Touch(Cap): U=30771 D=30090 L=31848 R=31211
+Touch(Cap): U=30777 D=30098 L=31824 R=31243
+[WWD] AFE feed=40 wake=0 vol=0.0dB vad=0 ret=-1
+Touch(Cap): U=30779 D=30121 L=31840 R=31240
+Touch(Cap): U=30587 D=30080 L=31787 R=31241
+Touch(Cap): U=30720 D=30085 L=31802 R=31189
+Touch(Cap): U=30742 D=30097 L=31829 R=31213
+Touch(Cap): U=30748 D=30073 L=31822 R=31237
+Touch(Cap): U=30773 D=30076 L=31813 R=31233
+Touch(Cap): U=30777 D=30089 L=31813 R=31214
+Touch(Cap): U=30774 D=30116 L=31825 R=31208
+Touch(Cap): U=30748 D=30057 L=31825 R=31238
+Touch(Cap): U=30758 D=30084 L=31806 R=31238
+[WWD] AFE feed=50 wake=0 vol=0.0dB vad=0 ret=-1
+[WWD] feed_samples[0..7]=545 543 536 557 575 539 534 542 (cnt=50)
+Touch(Cap): U=30756 D=30110 L=31846 R=31249
+Touch(Cap): U=30752 D=30084 L=31830 R=31230
+Touch(Cap): U=30745 D=30086 L=31819 R=31218
+Touch(Cap): U=30760 D=30094 L=31828 R=31207
+Touch(Cap): U=30745 D=30059 L=31820 R=31241
+Touch(Cap): U=30755 D=30082 L=31834 R=31258
+Touch(Cap): U=30750 D=30105 L=31816 R=31244
+Touch(Cap): U=30792 D=30113 L=31845 R=31249
+Touch(Cap): U=30781 D=30114 L=31846 R=31258
+Touch(Cap): U=30778 D=30104 L=31836 R=31253
+[WWD] AFE feed=60 wake=0 vol=0.0dB vad=0 ret=-1
+Touch(Cap): U=30758 D=30105 L=31828 R=31250
+Touch(Cap): U=30762 D=30093 L=31822 R=31232
+[MIC] RMS=410.4 (state=1, n=256)
+Touch(Cap): U=30758 D=30080 L=31823 R=31252
+Touch(Cap): U=30779 D=30089 L=31842 R=31240
+Exception in thread rx:
+Traceback (most recent call last):
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py
+", line 1081, in _bootstrap_inner
+    self._context.run(self.run)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py
+", line 1023, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\site-package
+s\serial\tools\miniterm.py", line 499, in reader
+    data = self.serial.read(self.serial.in_waiting or 1)
+                            ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\25295\AppData\Local\Python\pythoncore-3.14-64\Lib\site-package
+s\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError
+()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, '
+璁惧涓嶈瘑鍒鍛戒护銆?, None, 22))

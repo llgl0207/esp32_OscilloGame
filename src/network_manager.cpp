@@ -23,6 +23,9 @@ static TankData remote_tank_data;                           // 远程坦克数�
 static volatile bool remote_game_ended = false;             // 远程游戏结束标志
 static volatile uint8_t remote_game_end_reason = 0;         // 远程游戏结束原因
 
+// ESP-NOW回调函数是否已注册
+static bool esp_now_registered = false;
+
 // ESP-NOW数据发送回调函数
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
     // 处理发送状态（如果需要）
@@ -104,7 +107,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
         if (current_state == NET_CONNECTED) {
             // 验证是否来自已连接设备
             if (memcmp(connected_peer_mac, msg->src_mac, 6) == 0) {
-                Serial.printf("Received DATA from Peer: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                USBSerial.printf("Received DATA from Peer: %02X:%02X:%02X:%02X:%02X:%02X\n",
                     msg->src_mac[0], msg->src_mac[1], msg->src_mac[2], 
                     msg->src_mac[3], msg->src_mac[4], msg->src_mac[5]);
             }
@@ -174,6 +177,21 @@ void Network_Manager::enable() {
     WiFi.softAP(ssid, "12345678");
 }
 
+// 暂停 ESP-NOW (AI chat 时释放 CPU)
+void Network_Manager::suspend_esp_now() {
+    esp_now_deinit();
+    esp_now_registered = false;
+}
+
+// 恢复 ESP-NOW
+void Network_Manager::resume_esp_now() {
+    if (esp_now_init() == ESP_OK) {
+        esp_now_register_send_cb(OnDataSent);
+        esp_now_register_recv_cb(OnDataRecv);
+        esp_now_registered = true;
+    }
+}
+
 // 更新网络管理器状态
 void Network_Manager::update() {
     // 清理超时设备
@@ -224,7 +242,7 @@ void Network_Manager::update() {
             
             // 发送到已连接设备
             esp_now_send(connected_peer_mac, (uint8_t *) &msg, sizeof(msg));
-             Serial.println("Sent MSG_DATA (Heartbeat)");
+             USBSerial.println("Sent MSG_DATA (Heartbeat)");
         }
     }
 }

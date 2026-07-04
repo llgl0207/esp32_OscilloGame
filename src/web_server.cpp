@@ -8,6 +8,9 @@ WebServer server(80);
 // 当前UI状态字符串
 String current_ui_status = "{}";
 
+// Web 服务器任务句柄，用于暂停/恢复
+static TaskHandle_t s_webServerTaskHandle = NULL;
+
 // HTML页面内容
 const char* html = u8R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -145,20 +148,20 @@ void webServerTask(void* pvParameters) {
   // 启动AP模式
   WiFi.softAP(ssid, "12345678");
   IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
+  USBSerial.print("AP IP address: ");
+  USBSerial.println(myIP);
 
   // 初始化LittleFS文件系统
   if(!LittleFS.begin(true)){
-      Serial.println("An Error has occurred while mounting LittleFS");
+      USBSerial.println("An Error has occurred while mounting LittleFS");
   } else {
-      Serial.println("LittleFS mounted successfully");
+      USBSerial.println("LittleFS mounted successfully");
       // 列出文件用于调试
       File root = LittleFS.open("/");
       File file = root.openNextFile();
       while(file){
-          Serial.print("FILE: ");
-          Serial.println(file.name());
+          USBSerial.print("FILE: ");
+          USBSerial.println(file.name());
           file = root.openNextFile();
       }
   }
@@ -177,7 +180,7 @@ void webServerTask(void* pvParameters) {
 
   // 启动服务器
   server.begin();
-  Serial.println("HTTP server started");
+  USBSerial.println("HTTP server started");
 
   // 主循环：处理客户端请求
   while (1) {
@@ -194,7 +197,19 @@ void initWebServer() {
     4096,
     NULL,
     1,
-    NULL,
+    &s_webServerTaskHandle,
     0 // 核心0
   );
+}
+
+void suspendWebServer() {
+    if (s_webServerTaskHandle != NULL) {
+        vTaskSuspend(s_webServerTaskHandle);
+    }
+}
+
+void resumeWebServer() {
+    if (s_webServerTaskHandle != NULL) {
+        vTaskResume(s_webServerTaskHandle);
+    }
 }

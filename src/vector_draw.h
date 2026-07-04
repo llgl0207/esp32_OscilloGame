@@ -15,6 +15,10 @@ void IRAM_ATTR DRAW_GetNextPoint(uint16_t &outX, uint16_t &outY);
 // 设置单个字符 (测试用)
 void DRAW_SetLetter(char c);
 
+// 获取/设置绘图步长
+uint8_t DRAW_GetStepSize();
+void DRAW_SetStepSize(uint8_t step);
+
 // 设置全局缩放比例 (100 = 1.0)
 void DRAW_SetScale(uint16_t scale_x_percent, uint16_t scale_y_percent);
 
@@ -38,6 +42,14 @@ void DRAW_AddCircle(int32_t x, int32_t y, int32_t r);
 void DRAW_Clear(void);
 void DRAW_Render(void); // 提交帧 (原 updateFrame)
 void DRAW_Update(void); // 更新动画
+
+// 计算字符串在给定缩放下占用的像素宽度
+int32_t DRAW_CalcStringWidth(const char *s, uint16_t spacing, uint16_t scale_x);
+// 计算单个字符在给定缩放下占用的像素宽度
+int32_t DRAW_CalcCharWidth(char c, uint16_t spacing, uint16_t scale_x);
+
+// 禁用所有字符串的跑马灯滚动（用于 AI Chat 文书式显示）
+void DRAW_DisableScroll();
 
 // 终端功能
 void DRAW_Terminal_Init(uint16_t scale_pct, int32_t spacing);
