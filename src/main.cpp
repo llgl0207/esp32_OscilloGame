@@ -18,6 +18,15 @@ volatile int web_enc_delta = 0;     // Web端编码器增量
 volatile bool web_btn_pressed = false; // Web端按钮按下状态
 volatile int web_game_dir = -1;     // Web端游戏方向
 
+// Web 坦克控制（网页虚拟摇杆 — 全向模拟值）
+volatile float web_tank_speed_val = 0;  // -1.0~1.0, 正=前进
+volatile float web_tank_turn_val = 0;   // -1.0~1.0, 正=右转
+volatile bool web_tank_fire = false;    // 开火触发
+
+// Web 乒乓球控制（网页滑块 — 球拍 X 坐标 0~1）
+volatile float web_pong_paddle = 0.5f;  // 0.0~1.0, 对应球拍 X 坐标比例
+volatile bool web_pong_active = false;  // 网页端正在操控球拍
+
 // 编码器中断服务程序
 void IRAM_ATTR readEncoderISR() {
   static uint8_t old_AB = 3; // 假设起始状态为 11 (上拉)

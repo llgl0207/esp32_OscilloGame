@@ -24,6 +24,7 @@ static TaskHandle_t s_joystickCheckTaskHandle = nullptr;
 
 // --- 摇杆状态 ---
 static bool is_joystick_connected = true;
+static bool joystick_enabled = false;  // 用户设置：是否启用手柄（默认关闭）
 static BleMouse* bleMouse = nullptr;
 
 // --- 音乐播放器变量 ---
@@ -186,6 +187,29 @@ static Tank my_tank;
 static Bullet tank_bullets[TANK_MAX_BULLETS];
 static int tank_game_over = 0;
 static unsigned long last_fire_time = 0;
+static bool tank_use_joystick = false;  // 游戏启动时摇杆是否可用（快照）
+
+// --- 乒乓球游戏变量 ---
+#define PONG_PADDLE_W 300
+#define PONG_PADDLE_H 30
+#define PONG_BALL_R 25
+#define PONG_BALL_SPEED 25.0f
+#define PONG_WIN_SCORE 3   // 五局三胜
+#define PONG_MAX_ANGLE (PI / 8.0f)  // 最大偏转角 ±22.5°
+
+static float pong_ball_x, pong_ball_y;
+static float pong_ball_vx, pong_ball_vy;
+static float pong_paddle1_x;  // 主机球拍 X (底部)
+static float pong_paddle2_x;  // 客户机球拍 X (顶部, 主机视角)
+static int pong_score1;       // 主机得分
+static int pong_score2;       // 客户机得分
+static bool pong_is_host;     // 我是否是主机
+static int pong_game_over;    // 0=运行中, 1=输了, 2=未连接, 3=对手离开, 4=赢了
+static float pong_encoder_paddle_x = 1024.0f;  // 编码器累积球拍位置
+static float pong_my_paddle_x = 1024.0f;       // 本地球拍 X（直接渲染用，不走网络）
+static bool pong_use_joystick = false;          // 游戏启动时摇杆是否可用（快照）
+static float pong_prev_paddle1_x = 1024.0f;    // 上帧主机球拍位置（算移速）
+static float pong_prev_paddle2_x = 1024.0f;    // 上帧客户机球拍位置（算移速）
 
 // 触摸引脚
 #define TOUCH_UP    4
@@ -312,7 +336,9 @@ enum UI_State {
     UI_RACING,
     UI_RUNTINY,
     UI_TANK, // 新增坦克游戏
+    UI_PONG, // 新增乒乓球游戏
     UI_AI_CHAT,
+    UI_SETTINGS,
     UI_ABOUT
 };
 
@@ -335,9 +361,16 @@ static const char* games_menu_items[] = {
     "Racing",
     "RunTiny",
     "Tank", // 新增游戏
+    "Pong", // 乒乓球
     "Back"
 };
-static const int games_menu_count = 7;
+static const int games_menu_count = 8;
+
+static const char* settings_menu_items[] = {
+    "Joystick: OFF",
+    "Back"
+};
+static const int settings_menu_count = 2;
 
 // --- 贪吃蛇游戏逻辑 ---
 void Init_Snake_Game(void) {
@@ -868,6 +901,7 @@ void Init_Tank_Game(uint32_t seed, bool is_initiator) {
         tank_bullets[i].active = false;
     }
     tank_game_over = 0;
+    tank_use_joystick = joystick_enabled && is_joystick_connected;  // 用户开关 + 物理检测
     Network_Manager::clearRemoteGameEnded();
 }
 
@@ -889,24 +923,29 @@ void Update_Tank_Game(void) {
     // 左摇杆 Y (JOY1_Y) - 前进/后退
     // 右摇杆 X (JOY2_X) - 旋转
     // 按钮 A (JOY_A) - 开火
-    
-    int joy1_y = analogRead(JOY1_Y); // 0-4095
-    int joy2_x = analogRead(JOY2_X); // 0-4095
-    int btn_a = !digitalRead(JOY_A);  // 松开 = 1 (HIGH), 按下 = 0 (LOW)
-    
-    // 死区和映射
+    // 网页手柄 (web_tank_*) - 替代物理摇杆
+
+    // 死区和映射 (默认使用物理摇杆)
     float speed = 0;
-    if(abs(joy1_y - 2048) > 300) {
-        // 假设向上 (低值) -> 前进
-        // 2048 - val: 如果 val < 2048 (向上) 则为正
-        speed = (2048 - joy1_y) / 2048.0f * TANK_SPEED;
-    }
-    
     float turn = 0;
-    if(abs(joy2_x - 2048) > 300) {
-        // 假设向右 (高值) -> 顺时针
-        turn = (joy2_x - 2048) / 2048.0f * TANK_TURN_SPEED;
+
+    // 网页控制优先级更高 — 如果摇杆偏离中心则使用网页值
+    if (fabs(web_tank_speed_val) > 0.01f || fabs(web_tank_turn_val) > 0.01f) {
+        speed = web_tank_speed_val * TANK_SPEED;
+        turn = web_tank_turn_val * TANK_TURN_SPEED;
+    } else if (tank_use_joystick) {
+        // 回退到物理摇杆（游戏启动时已确认连接）
+        int joy1_y = analogRead(JOY1_Y); // 0-4095
+        int joy2_x = analogRead(JOY2_X); // 0-4095
+
+        if(abs(joy1_y - 2048) > 300) {
+            speed = (2048 - joy1_y) / 2048.0f * TANK_SPEED;
+        }
+        if(abs(joy2_x - 2048) > 300) {
+            turn = (joy2_x - 2048) / 2048.0f * TANK_TURN_SPEED;
+        }
     }
+    // 如果没有手柄且 web 值为 0，speed/turn 保持 0（坦克静止）
     
     // 更新坦克
     my_tank.angle += turn;
@@ -921,8 +960,10 @@ void Update_Tank_Game(void) {
     
     static int bullet_frames[TANK_MAX_BULLETS];
 
-    // 开火 (按下 = LOW)
-    if(btn_a == LOW && millis() - last_fire_time > 250) { 
+    // 开火 (物理按钮 JOY_A 按下 = LOW, 或网页开火)
+    bool btn_fire = (!digitalRead(JOY_A)) == LOW;
+    if ((btn_fire || web_tank_fire) && millis() - last_fire_time > 250) {
+        if (web_tank_fire) web_tank_fire = false; // 消费网页触发
         last_fire_time = millis();
         for(int i=0; i<TANK_MAX_BULLETS; i++) {
             if(!tank_bullets[i].active) {
@@ -999,6 +1040,258 @@ void Update_Tank_Game(void) {
         }
     }
     Network_Manager::sendGameData(data);
+}
+
+// --- 乒乓球游戏逻辑 ---
+
+void Init_Pong_Game(uint32_t seed, bool is_initiator) {
+    if(Network_Manager::getState() != NET_CONNECTED && Network_Manager::getState() != NET_IN_GAME) {
+        pong_game_over = 2; // 未连接
+        return;
+    }
+
+    pong_is_host = is_initiator;
+
+    if(is_initiator) {
+        if(seed == 0) seed = millis();
+        Network_Manager::startGame(2, seed); // game_id=2 for Pong
+    }
+
+    srand(seed);
+
+    // 球从中心开始
+    pong_ball_x = 1024;
+    pong_ball_y = 1024;
+
+    // 随机初始方向（偏向垂直）
+    float angle = (rand() % 6283) / 1000.0f; // 0 to ~2*PI
+    pong_ball_vx = PONG_BALL_SPEED * 0.5f * cos(angle);
+    pong_ball_vy = PONG_BALL_SPEED * 0.8f;
+    if(rand() % 2) pong_ball_vy = -pong_ball_vy; // 随机向上或向下
+
+    // 球拍初始在中间
+    pong_paddle1_x = 1024;
+    pong_paddle2_x = 1024;
+    pong_encoder_paddle_x = 1024.0f;
+    pong_my_paddle_x = 1024.0f;
+    pong_prev_paddle1_x = 1024.0f;
+    pong_prev_paddle2_x = 1024.0f;
+
+    // 游戏启动时拍快照：后续不再重新检测摇杆
+    pong_use_joystick = joystick_enabled && is_joystick_connected;
+
+    pong_score1 = 0;
+    pong_score2 = 0;
+    pong_game_over = 0;
+    Network_Manager::clearRemoteGameEnded();
+}
+
+#define PONG_ENC_SENSITIVITY 50  // 编码器灵敏度
+
+void Update_Pong_Game(int16_t enc_delta) {
+    if(pong_game_over) return;
+
+    // 检查远程退出
+    uint8_t reason;
+    if(Network_Manager::isRemoteGameEnded(&reason)) {
+        if(reason == 1) {
+            pong_game_over = 4; // 你赢了（对手输了）
+        } else if(reason == 2) {
+            pong_game_over = 1; // 你输了（对手赢了）
+        } else {
+            pong_game_over = 3; // 对手离开
+        }
+        return;
+    }
+
+    // --- 读取本地球拍输入 ---
+    // 网页端活跃标记：消费后清零
+    bool web_active = web_pong_active;
+    web_pong_active = false;
+
+    float local_paddle_x;
+    if (pong_use_joystick) {
+        // 手柄优先：绝对位置映射（游戏启动时已确认连接）
+        int jx = analogRead(JOY2_X);
+        local_paddle_x = (float)jx / 4095.0f * 2047.0f;
+        pong_encoder_paddle_x = local_paddle_x; // 同步编码器位置
+    } else if (web_active) {
+        // 网页端滑块：绝对位置映射
+        local_paddle_x = web_pong_paddle * 2047.0f;
+        pong_encoder_paddle_x = local_paddle_x; // 同步编码器位置
+    } else {
+        // 编码器控制：累加增量
+        pong_encoder_paddle_x += enc_delta * PONG_ENC_SENSITIVITY;
+        local_paddle_x = pong_encoder_paddle_x;
+    }
+
+    // 球拍范围限制
+    if (local_paddle_x < PONG_PADDLE_W/2) {
+        local_paddle_x = PONG_PADDLE_W/2;
+        pong_encoder_paddle_x = local_paddle_x;
+    }
+    if (local_paddle_x > 2047.0f - PONG_PADDLE_W/2) {
+        local_paddle_x = 2047.0f - PONG_PADDLE_W/2;
+        pong_encoder_paddle_x = local_paddle_x;
+    }
+
+    // 保存本地球拍位置用于渲染（避免网络回传延迟/抖动）
+    pong_my_paddle_x = local_paddle_x;
+
+    if (pong_is_host) {
+        // ===== 主机：运行物理模拟 =====
+
+        // 更新本地球拍
+        pong_paddle1_x = local_paddle_x;
+
+        // 接收客户机球拍位置
+        PongData remote;
+        if(Network_Manager::getRemoteGameData(&remote)) {
+            // 客户机发送的是客户机本地坐标，旋转 180° 转换到主机坐标
+            pong_paddle2_x = 2047.0f - remote.paddle1_x;
+        }
+
+        // 移动球
+        pong_ball_x += pong_ball_vx;
+        pong_ball_y += pong_ball_vy;
+
+        // 墙壁反弹（左右）
+        if(pong_ball_x < PONG_BALL_R) {
+            pong_ball_x = PONG_BALL_R;
+            pong_ball_vx = fabs(pong_ball_vx);
+        }
+        if(pong_ball_x > 2047 - PONG_BALL_R) {
+            pong_ball_x = 2047 - PONG_BALL_R;
+            pong_ball_vx = -fabs(pong_ball_vx);
+        }
+
+        // 主机球拍碰撞（底部, y=100）
+        if(pong_ball_vy < 0 && pong_ball_y - PONG_BALL_R <= 100 + PONG_PADDLE_H
+           && pong_ball_y > 50) {
+            if(pong_ball_x >= pong_paddle1_x - PONG_PADDLE_W/2 - PONG_BALL_R
+               && pong_ball_x <= pong_paddle1_x + PONG_PADDLE_W/2 + PONG_BALL_R) {
+                pong_ball_vy = fabs(pong_ball_vy); // 向上反弹
+                pong_ball_y = 100 + PONG_PADDLE_H + PONG_BALL_R + 1;
+                // 球拍移速（用于球速加成）
+                float paddle_vel = pong_paddle1_x - pong_prev_paddle1_x;
+                // 角度偏移反弹：击中位置 → 线性改变反射角
+                float hit_pos = (pong_ball_x - pong_paddle1_x) / (PONG_PADDLE_W/2);
+                hit_pos = constrain(hit_pos, -1.0f, 1.0f);
+                float speed = sqrt(pong_ball_vx*pong_ball_vx + pong_ball_vy*pong_ball_vy);
+                float angle = atan2(pong_ball_vy, pong_ball_vx);
+                angle -= hit_pos * PONG_MAX_ANGLE;  // 左挡→左偏, 右挡→右偏
+                // 球拍移速叠加到球速（削球/抽球效果）
+                speed += fabs(paddle_vel) * 0.3f;
+                if(speed < PONG_BALL_SPEED * 0.6f) speed = PONG_BALL_SPEED * 0.6f;
+                pong_ball_vx = speed * cos(angle);
+                pong_ball_vy = speed * sin(angle);
+            }
+        }
+
+        // 客户机球拍碰撞（顶部, y=1948）
+        if(pong_ball_vy > 0 && pong_ball_y + PONG_BALL_R >= 1948 - PONG_PADDLE_H
+           && pong_ball_y < 1997) {
+            if(pong_ball_x >= pong_paddle2_x - PONG_PADDLE_W/2 - PONG_BALL_R
+               && pong_ball_x <= pong_paddle2_x + PONG_PADDLE_W/2 + PONG_BALL_R) {
+                pong_ball_vy = -fabs(pong_ball_vy); // 向下反弹
+                pong_ball_y = 1948 - PONG_PADDLE_H - PONG_BALL_R - 1;
+                // 球拍移速
+                float paddle_vel = pong_paddle2_x - pong_prev_paddle2_x;
+                // 角度偏移反弹（顶部法线向下，符号取反）
+                float hit_pos = (pong_ball_x - pong_paddle2_x) / (PONG_PADDLE_W/2);
+                hit_pos = constrain(hit_pos, -1.0f, 1.0f);
+                float speed = sqrt(pong_ball_vx*pong_ball_vx + pong_ball_vy*pong_ball_vy);
+                float angle = atan2(pong_ball_vy, pong_ball_vx);
+                angle += hit_pos * PONG_MAX_ANGLE;  // 顶部法线反向
+                speed += fabs(paddle_vel) * 0.3f;
+                if(speed < PONG_BALL_SPEED * 0.6f) speed = PONG_BALL_SPEED * 0.6f;
+                pong_ball_vx = speed * cos(angle);
+                pong_ball_vy = speed * sin(angle);
+            }
+        }
+
+        // 保存本帧球拍位置供下帧计算移速
+        pong_prev_paddle1_x = pong_paddle1_x;
+        pong_prev_paddle2_x = pong_paddle2_x;
+
+        // 限速（保底，正常反弹不会超速）
+        float spd = sqrt(pong_ball_vx*pong_ball_vx + pong_ball_vy*pong_ball_vy);
+        if(spd > PONG_BALL_SPEED * 1.5f) {
+            pong_ball_vx = pong_ball_vx / spd * PONG_BALL_SPEED * 1.5f;
+            pong_ball_vy = pong_ball_vy / spd * PONG_BALL_SPEED * 1.5f;
+        }
+
+        // 得分判定
+        bool reset_ball = false;
+        if(pong_ball_y < 0) {
+            // 球穿过底部 → 客户机得分
+            pong_score2++;
+            if(pong_score2 >= PONG_WIN_SCORE) {
+                pong_game_over = 1; // 主机输了
+                Network_Manager::endGame(1); // reason=1: 发送方输了
+            } else {
+                reset_ball = true;
+            }
+        }
+        if(pong_ball_y > 2047) {
+            // 球穿过顶部 → 主机得分
+            pong_score1++;
+            if(pong_score1 >= PONG_WIN_SCORE) {
+                pong_game_over = 4; // 主机赢了
+                Network_Manager::endGame(2); // reason=2: 发送方赢了
+            } else {
+                reset_ball = true;
+            }
+        }
+
+        if(reset_ball) {
+            pong_ball_x = 1024;
+            pong_ball_y = 1024;
+            pong_ball_vx = (rand() % 2 ? 1.0f : -1.0f) * PONG_BALL_SPEED * 0.5f;
+            pong_ball_vy = PONG_BALL_SPEED * 0.7f;
+            if(pong_score1 > pong_score2) pong_ball_vy = -pong_ball_vy; // 发球给对方
+        }
+
+        // 发送完整状态给客户机
+        PongData data;
+        data.ball_x = pong_ball_x;
+        data.ball_y = pong_ball_y;
+        data.ball_vx = pong_ball_vx;
+        data.ball_vy = pong_ball_vy;
+        data.paddle1_x = pong_paddle1_x;
+        data.paddle2_x = pong_paddle2_x;
+        data.score1 = pong_score1;
+        data.score2 = pong_score2;
+        Network_Manager::sendGameData(data);
+
+    } else {
+        // ===== 客户机：发送球拍位置，接收游戏状态 =====
+
+        // 发送我的球拍位置给主机
+        PongData data;
+        data.ball_x = 0;
+        data.ball_y = 0;
+        data.ball_vx = 0;
+        data.ball_vy = 0;
+        data.paddle1_x = local_paddle_x; // 我的球拍（客户机本地坐标）
+        data.paddle2_x = 0;
+        data.score1 = 0;
+        data.score2 = 0;
+        Network_Manager::sendGameData(data);
+
+        // 接收主机游戏状态
+        PongData remote;
+        if(Network_Manager::getRemoteGameData(&remote)) {
+            pong_ball_x = remote.ball_x;
+            pong_ball_y = remote.ball_y;
+            pong_ball_vx = remote.ball_vx;
+            pong_ball_vy = remote.ball_vy;
+            pong_paddle1_x = remote.paddle1_x; // 主机球拍（主机坐标）
+            pong_paddle2_x = remote.paddle2_x; // 我的球拍（主机坐标）
+            pong_score1 = remote.score1;
+            pong_score2 = remote.score2;
+        }
+    }
 }
 
 // --- 打印 SD 卡完整目录树（用于排查路径问题） ---
@@ -1384,6 +1677,7 @@ static void guiTask(void* pvParameters) {
                         case UI_MENU_GAMES:
                         case UI_MENU_ONLINE:
                         case UI_GAME_JOY:
+                        case UI_SETTINGS:
                         case UI_ABOUT:
                             ui_state = UI_MENU_MAIN;
                             menu_index = 0; last_menu_index = -1;
@@ -1423,6 +1717,10 @@ static void guiTask(void* pvParameters) {
             if(reqGameId == 1) { // 坦克大战
                 ui_state = UI_TANK;
                 Init_Tank_Game(reqSeed, false); // 响应者
+                rebuild = true;
+            } else if(reqGameId == 2) { // 乒乓球
+                ui_state = UI_PONG;
+                Init_Pong_Game(reqSeed, false); // 响应者
                 rebuild = true;
             }
         }
@@ -1472,6 +1770,11 @@ static void guiTask(void* pvParameters) {
                     ui_state = UI_AI_CHAT;
                     last_menu_index = -1;
                     updateWebUIStatus("AI Chat active...");
+                    continue;
+                } else if (menu_index == 6) {
+                    ui_state = UI_SETTINGS;
+                    menu_index = 0;
+                    last_menu_index = -1;
                     continue;
                 } else if (menu_index == 7) {
                     ui_state = UI_ABOUT;
@@ -1832,6 +2135,10 @@ static void guiTask(void* pvParameters) {
                     Init_Tank_Game(0, true); // 发起者, Seed=0 (自动)
                     continue;
                 } else if (menu_index == 6) {
+                    ui_state = UI_PONG;
+                    Init_Pong_Game(0, true); // 发起者, Seed=0 (自动)
+                    continue;
+                } else if (menu_index == 7) {
                     ui_state = UI_MENU_MAIN;
                     menu_index = 1; // 返回 "Games" 选项
                     last_menu_index = -1;
@@ -1983,6 +2290,12 @@ static void guiTask(void* pvParameters) {
                         Stop_Music();
                         ui_state = UI_TANK;
                         Init_Tank_Game(reqSeed, false);
+                        rebuild = true;
+                        break;
+                    } else if(reqGameId == 2) { // Pong
+                        Stop_Music();
+                        ui_state = UI_PONG;
+                        Init_Pong_Game(reqSeed, false);
                         rebuild = true;
                         break;
                     }
@@ -2242,12 +2555,18 @@ static void guiTask(void* pvParameters) {
                         Init_Tank_Game(reqSeed, false);
                         rebuild = true;
                         break;
+                    } else if(reqGameId == 2) { // Pong
+                        Stop_Video();
+                        ui_state = UI_PONG;
+                        Init_Pong_Game(reqSeed, false);
+                        rebuild = true;
+                        break;
                     }
                 }
 
                 // Update Volume
                 int32_t curr_enc = encoderValue;
-                int delta = (curr_enc - last_enc) / 4; 
+                int delta = (curr_enc - last_enc) / 4;
                 if (delta != 0) {
                     volume += delta;
                     if (volume < 0) volume = 0;
@@ -2899,13 +3218,184 @@ static void guiTask(void* pvParameters) {
                 status += "Playing...\n";
             }
 
-            if(!is_joystick_connected) {
+            if(!tank_use_joystick) {
                 DRAW_AddString("JOYSTICK", 0, 400, 900, 20, 20);
                 DRAW_AddString("DISCONNECTED", 0, 400, 700, 20, 20);
                 status += "JOYSTICK DISCONNECTED\n";
             }
+
+            // 网页摇杆控制指示
+            if (fabs(web_tank_speed_val) > 0.01f || fabs(web_tank_turn_val) > 0.01f) {
+                DRAW_AddString("WEB CONTROL", 0, 400, 500, 20, 20);
+                status += "JOY SPD=" + String(web_tank_speed_val, 2) + " TURN=" + String(web_tank_turn_val, 2) + "\n";
+            } else if (!tank_use_joystick) {
+                DRAW_AddString("WEB ONLY", 0, 400, 500, 20, 20);
+                status += "WEB ONLY (no joystick)\n";
+            }
             
             updateWebUIStatus(status);
+
+        } else if (ui_state == UI_PONG) {
+            // 退出
+            if (btn_pressed) {
+                ui_state = UI_MENU_GAMES;
+                rebuild = true;
+                last_menu_index = -1;
+                Network_Manager::endGame(0);
+                continue;
+            }
+
+            Update_Pong_Game(enc_delta);
+
+            DRAW_Clear();
+            DRAW_AddRect(0, 0, 2047, 2047);
+
+            // --- 辅助旋转函数：仅用于来自主机坐标的对象 ---
+            auto rotX = [&](float x) -> float {
+                return pong_is_host ? x : (2047.0f - x);
+            };
+            auto rotY = [&](float y) -> float {
+                return pong_is_host ? y : (2047.0f - y);
+            };
+
+            // 绘制中线
+            for(int ly = 50; ly < 2000; ly += 80) {
+                int y1 = (int)rotY((float)ly);
+                int y2 = (int)rotY((float)(ly + 40));
+                int cx = (int)rotX(1024.0f);
+                DRAW_AddLine(cx, y1, cx, y2);
+            }
+
+            // 绘制球（来自主机坐标，需旋转）
+            int bx = (int)rotX(pong_ball_x);
+            int by = (int)rotY(pong_ball_y);
+            DRAW_AddCircle(bx, by, PONG_BALL_R);
+
+            // 绘制我方球拍（本地球坐标，直接画在底部 y=100，不旋转）
+            {
+                int px = (int)pong_my_paddle_x;
+                DRAW_AddRect(px - PONG_PADDLE_W/2, 100, PONG_PADDLE_W, PONG_PADDLE_H);
+            }
+
+            // 绘制对方球拍（主机坐标，需旋转后画在顶部）
+            {
+                float opp_x = pong_is_host ? pong_paddle2_x : (2047.0f - pong_paddle1_x);
+                int px = (int)opp_x;
+                int py = (int)(1948.0f - PONG_PADDLE_H);
+                DRAW_AddRect(px - PONG_PADDLE_W/2, py, PONG_PADDLE_W, PONG_PADDLE_H);
+            }
+
+            int my_score = pong_is_host ? pong_score1 : pong_score2;
+            int opp_score = pong_is_host ? pong_score2 : pong_score1;
+
+            // 绘制比分（屏幕顶部居中横向显示）
+            {
+                char score_buf[32];
+                sprintf(score_buf, "%d  :  %d", opp_score, my_score);
+                DRAW_AddString(score_buf, 0, 1024, 1900, 30, 30);
+            }
+
+            String status = "GAME: PONG (BO5)\n";
+            char buf[48];
+            sprintf(buf, "Score: %d - %d\n", my_score, opp_score);
+            status += buf;
+
+            if(pong_game_over) {
+                if(pong_game_over == 1) {
+                    DRAW_AddString("YOU LOSE", 0, 600, 1100, 20, 20);
+                    status += "MATCH OVER - YOU LOSE\n";
+                } else if(pong_game_over == 2) {
+                    DRAW_AddString("NOT CONNECTED", 0, 400, 1100, 20, 20);
+                    status += "NOT CONNECTED\n";
+                } else if(pong_game_over == 3) {
+                    DRAW_AddString("OPPONENT LEFT", 0, 400, 1100, 20, 20);
+                    status += "OPPONENT LEFT\n";
+                } else if(pong_game_over == 4) {
+                    DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
+                    status += "MATCH OVER - YOU WIN\n";
+                }
+                sprintf(buf, "Final: %d - %d\n", my_score, opp_score);
+                status += buf;
+
+                // 2 秒后自动退出
+                static unsigned long pong_exit_timer = 0;
+                if(pong_exit_timer == 0) pong_exit_timer = millis();
+                if(millis() - pong_exit_timer > 2000) {
+                    ui_state = UI_MENU_GAMES;
+                    rebuild = true;
+                    last_menu_index = -1;
+                    pong_exit_timer = 0;
+                    Network_Manager::endGame(0);
+                }
+            }
+
+            // 显示角色和连接状态
+            {
+                char buf[64];
+                sprintf(buf, "%s | %s",
+                    pong_is_host ? "HOST" : "CLIENT",
+                    pong_use_joystick ? "JOY" : "WEB");
+                DRAW_AddString(buf, 0, 50, 50, 15, 15);
+            }
+
+            updateWebUIStatus(status);
+
+        } else if (ui_state == UI_SETTINGS) {
+            // 导航
+            if (enc_delta != 0) {
+                menu_index += enc_delta;
+                if (menu_index < 0) menu_index = settings_menu_count - 1;
+                if (menu_index >= settings_menu_count) menu_index = 0;
+                rebuild = true;
+            }
+
+            // 选择
+            if (btn_pressed) {
+                if (menu_index == 0) {
+                    // 切换摇杆开关
+                    joystick_enabled = !joystick_enabled;
+                    rebuild = true;
+                } else if (menu_index == 1) {
+                    ui_state = UI_MENU_MAIN;
+                    menu_index = 6; // 返回 Settings 项
+                    last_menu_index = -1;
+                    continue;
+                }
+            }
+
+            if (rebuild || last_menu_index == -1) {
+                DRAW_Clear();
+                DRAW_AddRect(0, 0, 2047, 2047);
+
+                int start_y = 1600;
+                int spacing = 300;
+                int scale = 30;
+
+                // 动态更新 Joystick 项文字
+                char joy_label[32];
+                sprintf(joy_label, "Joystick: %s", joystick_enabled ? "ON" : "OFF");
+
+                String status = "SETTINGS\n";
+
+                for (int i = 0; i < settings_menu_count; i++) {
+                    int y = start_y - (i * spacing);
+                    if (i == menu_index) {
+                        DRAW_AddString(">", 0, 50, y, scale, scale);
+                        status += "> ";
+                    } else {
+                        status += "  ";
+                    }
+                    if (i == 0) {
+                        DRAW_AddString(joy_label, 0, 250, y, scale, scale);
+                        status += String(joy_label) + "\n";
+                    } else {
+                        DRAW_AddString(settings_menu_items[i], 0, 250, y, scale, scale);
+                        status += String(settings_menu_items[i]) + "\n";
+                    }
+                }
+                updateWebUIStatus(status);
+                last_menu_index = menu_index;
+            }
 
         } else if (ui_state == UI_ABOUT) {
              if (btn_pressed) {
@@ -2914,7 +3404,7 @@ static void guiTask(void* pvParameters) {
                 last_menu_index = -1;
                 continue;
             }
-            
+
             if (rebuild || last_menu_index == -1) {
                 DRAW_Clear();
                 DRAW_AddRect(50, 50, 1948, 1948);
@@ -2964,30 +3454,41 @@ static void serialOutputTask(void* pvParameters) {
 
 static void joystickCheckTask(void* pvParameters) {
     int consecutive_disconnects = 0;
-    
+    int consecutive_connects = 0;
+
     for(;;) {
         int j1x = analogRead(JOY1_X);
         int j1y = analogRead(JOY1_Y);
         int j2x = analogRead(JOY2_X);
         int j2y = analogRead(JOY2_Y);
-        
+
+        // 断开特征：所有轴读数落在特定窄范围内（悬空引脚典型值）
         bool cond1 = (j1x >= 300 && j1x <= 700);
         bool cond2 = (j1y >= 1 && j1y <= 200);
         bool cond3 = (j2x >= 400 && j2x <= 1200);
         bool cond4 = (j2y >= 1 && j2y <= 350);
-        
-        if(cond1 && cond2 && cond3 && cond4) {
+        bool looks_disconnected = (cond1 && cond2 && cond3 && cond4);
+
+        if(looks_disconnected) {
             consecutive_disconnects++;
+            consecutive_connects = 0;
         } else {
+            consecutive_connects++;
             consecutive_disconnects = 0;
-            is_joystick_connected = true;
         }
-        
+
+        // 需要连续 10 次 (1 秒) 断开特征才判定为断开
         if(consecutive_disconnects >= 10) {
             is_joystick_connected = false;
-            if(consecutive_disconnects > 20) consecutive_disconnects = 20; 
+            if(consecutive_disconnects > 20) consecutive_disconnects = 20;
         }
-        
+
+        // 需要连续 5 次 (0.5 秒) 正常读数才判定为已连接（对称迟滞）
+        if(consecutive_connects >= 5) {
+            is_joystick_connected = true;
+            if(consecutive_connects > 10) consecutive_connects = 10;
+        }
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

@@ -20,6 +20,15 @@ extern volatile int web_enc_delta;
 extern volatile bool web_btn_pressed;
 extern volatile int web_game_dir; // -1: 无, 0:上, 1:下, 2:左, 3:右
 
+// Web 坦克控制（网页虚拟摇杆 — 全向模拟值）
+extern volatile float web_tank_speed_val;  // -1.0~1.0, 正=前进
+extern volatile float web_tank_turn_val;   // -1.0~1.0, 正=右转
+extern volatile bool web_tank_fire;        // 开火触发
+
+// Web 乒乓球控制（网页滑块）
+extern volatile float web_pong_paddle;     // 0.0~1.0, 球拍 X 坐标比例
+extern volatile bool web_pong_active;      // 网页端正在操控球拍
+
 
 #ifdef __cplusplus
 }
