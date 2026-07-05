@@ -24,6 +24,8 @@
 #include "ai_config.h"
 #include "network_manager.h"
 
+#include <esp_heap_caps.h>   // heap_caps_get_free_size / MALLOC_CAP_DMA
+
 #define SAMPLE_RATE      16000
 #define MAX_RECORD_SEC   10      // 最长录 10 秒（用户松手即停，上限保护）
 #define CHUNK_SIZE       512
@@ -214,6 +216,7 @@ static String deepseek_chat_stream(const String& text) {
         USBSerial.printf("DeepSeek: connect FAILED @ %ums\n", millis() - t0);
         return String();
     }
+    client.setNoDelay(true);  // 连接后才设 TCP_NODELAY
     USBSerial.printf("DeepSeek: connected @ %ums\n", millis() - t0);
 
     // ---- 构造 JSON body (stream: true) ----
@@ -247,8 +250,13 @@ static String deepseek_chat_stream(const String& text) {
         "\r\n" +
         body;
 
-    client.print(http_request);
-    USBSerial.printf("DeepSeek: sent %u bytes\n", http_request.length());
+    size_t sent = client.print(http_request);
+    USBSerial.printf("DeepSeek: sent %u/%u bytes\n", sent, http_request.length());
+    if (sent < http_request.length()) {
+        client.stop();
+        USBSerial.println("DeepSeek: write failed, retrying...");
+        return String();
+    }
 
     // ---- 读取响应头 ----
     int http_code = 0;
@@ -456,7 +464,8 @@ static void ai_chat_task(void* pvParameters) {
         }
 
         // ---- 长按 → 录音（按住持续录，松手停止）----
-        // 每轮重新创建 MIC（释放 I2S DMA，给后续 SSL 用）
+        // 先释放 BLE DMA（如有），让堆合并成大块；再创建 MIC，避免碎片
+        deinitHardwareDMA();
         if (!mic) {
             mic = new Microphone(MIC_SCK, MIC_WS, MIC_DATA, SAMPLE_RATE);
             if (!mic || !mic->init()) {
@@ -508,10 +517,24 @@ static void ai_chat_task(void* pvParameters) {
         }
         USBSerial.printf("You: %s\n", recognized.c_str());
 
-        // ---- DeepSeek (流式 SSE) ----
+        // ---- DeepSeek (流式 SSE，失败自动重试 1 次) ----
         ai_show(AI_PHASE_REPLY, "Asking DeepSeek...");
-        deinitHardwareDMA();  // 释放 BLE DMA 内存给 SSL 用
-        reply = deepseek_chat_stream(recognized);
+        {
+            // 调试：查看内部 SRAM 可用量
+            size_t dma_free = heap_caps_get_free_size(MALLOC_CAP_DMA);
+            size_t dma_largest = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
+            size_t heap_free = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+            USBSerial.printf("Heap: DMA free=%u (largest=%u), DEFAULT free=%u\n",
+                dma_free, dma_largest, heap_free);
+        }
+        for (int retry = 0;; retry++) {
+            reply = deepseek_chat_stream(recognized);
+            if (reply.length() > 0) break;          // 成功
+            if (retry >= 1) break;                   // 重试 1 次还失败 → 放弃
+            USBSerial.println("DeepSeek: retrying after 1s...");
+            ai_show(AI_PHASE_REPLY, "Retrying...");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
 
         if (reply.length() == 0) {
             term_println("ERROR: DeepSeek failed");

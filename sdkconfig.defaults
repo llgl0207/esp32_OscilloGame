@@ -15,6 +15,8 @@ CONFIG_SPIRAM_CACHE_WORKAROUND=y
 # 关闭硬件加密引擎，让 SSL 内存走 PSRAM（避免与 DMA 内存池竞争）
 CONFIG_MBEDTLS_HARDWARE_SHA=n
 CONFIG_MBEDTLS_HARDWARE_AES=n
+# 动态缓冲区：SSL 只分配手头需要的尺寸，不一次性预分配 16KB
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 CONFIG_MBEDTLS_SSL_MAX_CONTENT_LEN=16384
 
 # ------------------------------------------------------------
