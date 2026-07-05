@@ -8,6 +8,7 @@
  */
 
 #include "ai_chat.h"
+#include "ai_prompt.h"
 #include "pins.h"
 #include "microphone.h"
 #include "freertos.h"
@@ -28,8 +29,8 @@
 #define CHUNK_SIZE       512
 
 volatile bool ai_chat_active = false;
+volatile unsigned long ai_chat_activity_time = 0;
 
-static Microphone* s_mic = nullptr;
 static char baidu_token[256] = {0};
 static unsigned long token_expires = 0;
 
@@ -59,6 +60,8 @@ static void ai_show(AIChatPhase phase, const char* text) {
     ai_chat_display_text[sizeof(ai_chat_display_text) - 1] = '\0';
     ai_chat_phase = phase;
     ai_chat_dirty = true;
+    // 同步到 Web 状态监视器
+    updateWebUIStatus(String("[AI] ") + text);
 }
 
 // term_println 只输出到串口，不再显示在屏幕上
@@ -223,17 +226,7 @@ static String deepseek_chat_stream(const String& text) {
     JsonArray messages = req_doc["messages"].to<JsonArray>();
     JsonObject sys_msg = messages.add<JsonObject>();
     sys_msg["role"] = "system";
-    sys_msg["content"] =
-        "ENGLISH ONLY. ASCII only. Device cannot render non-ASCII.\n"
-        "You control an oscilloscope game console.\n"
-        "Rules:\n"
-        "1. For actions: reply ONLY raw JSON, no markdown, no code fences:\n"
-        "{\"reply\":\"...\",\"action\":\"...\"}\n"
-        "2. No action needed: plain text only.\n"
-        "Actions: open_music, open_video, open_games, open_online, open_game_joy, open_ai_chat, open_about, "
-        "start_snake, start_breakout, start_flappy, start_racing, start_runtiny, start_tank, "
-        "back, exit\n"
-        "ENGLISH ONLY. No Chinese/emoji.";
+    sys_msg["content"] = AI_SYSTEM_PROMPT;
 
     JsonObject user_msg = messages.add<JsonObject>();
     user_msg["role"] = "user";
@@ -386,6 +379,7 @@ sse_done:
 
 static void ai_chat_task(void* pvParameters) {
     ai_chat_active = true;
+    ai_chat_activity_time = millis();
 
     String recognized, reply;
     int16_t* pcm_buffer = nullptr;
@@ -396,32 +390,18 @@ static void ai_chat_task(void* pvParameters) {
     int high_cnt = 0;
     uint8_t saved_step = DRAW_GetStepSize();
     bool has_action = false;
+    bool first_wait = true;
+    Microphone* mic = nullptr;
 
-    USBSerial.printf("Heap before suspension: %u\n", ESP.getFreeHeap());
-    suspendWebServer();
-    suspendNonessentialTasks();
-    USBSerial.printf("Heap after suspension: %u\n", ESP.getFreeHeap());
-    USBSerial.println("Tasks suspended for AI");
-
-    // ---- 紧凑模式 + 显示 "Press ENTER to record..." ----
     DRAW_SetStepSize(16);
-    ai_show(AI_PHASE_WAITING, "Press ENTER to record...");
 
-    // Init MIC
-    if (!s_mic) {
-        s_mic = new Microphone(MIC_SCK, MIC_WS, MIC_DATA, SAMPLE_RATE);
-        if (!s_mic->init()) {
-            term_println("ERROR: MIC init FAILED!");
-            delete s_mic; s_mic = nullptr;
-            goto done;
-        }
-        USBSerial.println("MIC ready");
-    }
+    // ---- 暂停非必要任务，减少堆碎片给 SSL ----
+    suspendNonessentialTasks();
 
-    // WiFi
+    // ---- WiFi ----
     if (!wifi_connect()) { goto done; }
 
-    // ---- 关闭 ESP-NOW ----
+    // ---- 关闭 ESP-NOW（避免 WiFi 冲突） ----
     Network_Manager::suspend_esp_now();
 
     // ---- 获取 Baidu token ----
@@ -440,115 +420,139 @@ static void ai_chat_task(void* pvParameters) {
     }
     USBSerial.printf("PSRAM buffer: %u bytes\n", alloc_bytes);
 
-    // ---- Wait for button press ----
-    USBSerial.println("Press ENTER to record...");
-    while (digitalRead(EN_S) == HIGH) {
-        if (!ai_chat_active) goto done;
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
+    // ---- 多轮对话循环 ----
+    // MIC 不在此初始化，每轮按需创建（录音前创建，DeepSeek 前释放 I2S DMA）
+    while (ai_chat_active) {
+        // 仅第一轮等待时显示提示（回复后提示会覆盖内容）
+        if (first_wait) {
+            ai_show(AI_PHASE_WAITING, "Long press=record, short=exit");
+            ai_chat_activity_time = millis();
+            USBSerial.println("Waiting: long press=record, short=exit");
+        }
+        first_wait = false;
 
-    USBSerial.println("Recording... release to stop");
-
-    // ---- Record to PSRAM ----
-    total_samples = 0;
-    high_cnt = 0;
-
-    while (total_samples < max_samples) {
-        if (!ai_chat_active) goto done;
-        if (digitalRead(EN_S) == HIGH) {
-            high_cnt++;
-            if (high_cnt > 15 && total_samples > SAMPLE_RATE / 4) break;
-        } else {
-            high_cnt = 0;
+        // ---- 等待按键 ----
+        while (digitalRead(EN_S) == HIGH) {
+            if (!ai_chat_active) goto done;
+            vTaskDelay(pdMS_TO_TICKS(20));
         }
 
-        size_t n = s_mic->read(chunk_buf, CHUNK_SIZE);
-        if (n == 0) break;
-        memcpy(pcm_buffer + total_samples, chunk_buf, n * sizeof(int16_t));
-        total_samples += n;
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
+        // ---- 短按 vs 长按检测 ----
+        unsigned long press_ms = millis();
+        bool short_press = true;
 
-    if (total_samples < SAMPLE_RATE / 4) {
-        term_println("ERROR: Too short!");
-        goto done;
-    }
-
-    USBSerial.printf("Recorded: %.1fs (%zu samples)\n", (float)total_samples / SAMPLE_RATE, total_samples);
-
-    // ---- 释放 MIC (I2S) ----
-    if (s_mic) { delete s_mic; s_mic = nullptr; }
-
-    // ---- ASR (直接从 PSRAM POST) ----
-    USBSerial.println("Recognizing...");
-    recognized = baidu_asr(pcm_buffer, total_samples);
-    if (recognized.length() == 0) {
-        term_println("ERROR: ASR failed");
-        goto done;
-    }
-    USBSerial.printf("You: %s\n", recognized.c_str());
-
-    // ---- DeepSeek (流式 SSE: 边生成边显示) ----
-    ai_show(AI_PHASE_REPLY, "");
-    // 释放 DMA 内存 (BLE) 给 SSL 用
-    deinitHardwareDMA();
-    reply = deepseek_chat_stream(recognized);
-    // 注意: reinitHardwareDMA 在 done: 标签统一恢复，确保异常路径也能恢复 BLE
-    if (reply.length() == 0) {
-        term_println("ERROR: DeepSeek failed");
-        // 确保动作不执行（guiTask 会忽略 VC_NONE）
-        voice_action = VC_NONE;
-        has_action = false;
-        // 仍然显示失败信息让用户看到
-        ai_show(AI_PHASE_REPLY, "DeepSeek timed out");
-        vTaskDelay(pdMS_TO_TICKS(1500));
-        goto done;
-    }
-
-    // ---- 解析 JSON action（若有） ----
-    // 用累积的完整回复解析 action
-    {
-        String parsed = VC_ParseReply(reply);
-        has_action = (voice_action != VC_NONE);
-        // 如果流式显示的内容被 action JSON 覆盖了, 重新设置显示文本
-        if (has_action && parsed.length() > 0) {
-            ai_show(AI_PHASE_REPLY, parsed.c_str());
+        while (digitalRead(EN_S) == LOW) {
+            if (!ai_chat_active) goto done;
+            if (millis() - press_ms >= 300) {
+                short_press = false;     // 超过300ms = 长按
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(5));
         }
-    }
 
-    USBSerial.println("\n" + String(50, '-'));
-    USBSerial.println("AI Chat Done");
-    USBSerial.println(String(50, '-') + "\n");
+        if (short_press) {
+            USBSerial.println("Short press → exit");
+            break;  // 短按退出
+        }
 
-    // ---- 若有语音动作，直接退出（guiTask 会执行动作） ----
-    if (has_action) {
-        USBSerial.println("[Executing action...]");
-        vTaskDelay(pdMS_TO_TICKS(500));
-        goto done;
-    }
+        // ---- 长按 → 录音（按住持续录，松手停止）----
+        // 每轮重新创建 MIC（释放 I2S DMA，给后续 SSL 用）
+        if (!mic) {
+            mic = new Microphone(MIC_SCK, MIC_WS, MIC_DATA, SAMPLE_RATE);
+            if (!mic || !mic->init()) {
+                term_println("ERROR: MIC re-init FAILED!");
+                delete mic;
+                mic = nullptr;
+                continue;
+            }
+        }
 
-    // ---- 等待用户按 EN_S 退出 ----
-    USBSerial.println("Press ENTER to exit");
-    vTaskDelay(pdMS_TO_TICKS(500));
-    while (digitalRead(EN_S) == HIGH) {
-        if (!ai_chat_active) goto done;
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-    while (digitalRead(EN_S) == LOW) {
-        if (!ai_chat_active) goto done;
-        vTaskDelay(pdMS_TO_TICKS(20));
+        USBSerial.println("Recording... release to stop");
+        ai_show(AI_PHASE_THINKING, "Recording...");
+
+        total_samples = 0;
+        high_cnt = 0;
+
+        while (total_samples < max_samples) {
+            if (!ai_chat_active) goto done;
+            if (digitalRead(EN_S) == HIGH) {
+                high_cnt++;
+                if (high_cnt > 15 && total_samples > SAMPLE_RATE / 4) break;
+            } else {
+                high_cnt = 0;
+            }
+            size_t n = mic->read(chunk_buf, CHUNK_SIZE);
+            if (n == 0) break;
+            memcpy(pcm_buffer + total_samples, chunk_buf, n * sizeof(int16_t));
+            total_samples += n;
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+        if (total_samples < SAMPLE_RATE / 4) {
+            term_println("ERROR: Too short!");
+            continue;
+        }
+        USBSerial.printf("Recorded: %.1fs (%zu samples)\n",
+                         (float)total_samples / SAMPLE_RATE, total_samples);
+
+        // ---- 释放 MIC (I2S DMA)，给后续 SSL 腾出 DMA 内存 ----
+        if (mic) { delete mic; mic = nullptr; }
+
+        // ---- ASR ----
+        USBSerial.println("Recognizing...");
+        ai_show(AI_PHASE_THINKING, "Thinking...");
+        recognized = baidu_asr(pcm_buffer, total_samples);
+        if (recognized.length() == 0) {
+            term_println("ERROR: ASR failed");
+            continue;
+        }
+        USBSerial.printf("You: %s\n", recognized.c_str());
+
+        // ---- DeepSeek (流式 SSE) ----
+        ai_show(AI_PHASE_REPLY, "Asking DeepSeek...");
+        deinitHardwareDMA();  // 释放 BLE DMA 内存给 SSL 用
+        reply = deepseek_chat_stream(recognized);
+
+        if (reply.length() == 0) {
+            term_println("ERROR: DeepSeek failed");
+            voice_action = VC_NONE;
+            has_action = false;
+            ai_show(AI_PHASE_REPLY, "DeepSeek timed out");
+            vTaskDelay(pdMS_TO_TICKS(1500));
+            continue;
+        }
+
+        // ---- 解析 JSON action ----
+        {
+            String parsed = VC_ParseReply(reply);
+            has_action = (voice_action != VC_NONE);
+            if (parsed.length() > 0) {
+                ai_show(AI_PHASE_REPLY, parsed.c_str());
+            }
+        }
+
+        // ---- 有动作时退出（guiTask 执行）----
+        if (has_action) {
+            USBSerial.println("[Executing action...]");
+            vTaskDelay(pdMS_TO_TICKS(500));
+            break;
+        }
+
+        // ---- 回复保持可见，等待下一轮输入 ----
+        // 不显示 "Long press=record, short=exit"（避免覆盖回复文本）
+        // 直接回到按键等待，用户短按退出或长按继续录音
+        USBSerial.println("Press ENTER: short=exit, long=record again");
+        ai_chat_activity_time = millis();
+        // 短暂停顿后继续（不覆盖屏幕，回复内容保持显示）
+        vTaskDelay(pdMS_TO_TICKS(300));
     }
 
 done:
-    // 恢复 DMA 外设 (BLE) — 必须在恢复任务之前执行
-    reinitHardwareDMA();
-
-    ai_chat_dirty = true; // 最后一刷
-    // 恢复所有服务
+    reinitHardwareDMA();  // BLE 后续由 joystickCheckTask 自动恢复
     Network_Manager::resume_esp_now();
     resumeNonessentialTasks();
-    resumeWebServer();
-
+    if (mic) { delete mic; mic = nullptr; }
+    ai_chat_dirty = true;
     if (pcm_buffer) free(pcm_buffer);
     DRAW_SetStepSize(saved_step);
     ai_chat_active = false;

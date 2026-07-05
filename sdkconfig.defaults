@@ -12,7 +12,9 @@ CONFIG_SPIRAM_CACHE_WORKAROUND=y
 # ------------------------------------------------------------
 # mbedTLS — 有 PSRAM 后可启用硬件加速，增大 SSL 缓冲区
 # ------------------------------------------------------------
-# 保留硬件 SHA/AES/MPI (取消禁用)
+# 关闭硬件加密引擎，让 SSL 内存走 PSRAM（避免与 DMA 内存池竞争）
+CONFIG_MBEDTLS_HARDWARE_SHA=n
+CONFIG_MBEDTLS_HARDWARE_AES=n
 CONFIG_MBEDTLS_SSL_MAX_CONTENT_LEN=16384
 
 # ------------------------------------------------------------

@@ -1515,6 +1515,9 @@ static void guiTask(void* pvParameters) {
             }
 
         } else if (ui_state == UI_AI_CHAT) {
+            // 滚动状态（跨重绘保持，新会话时重置）
+            static int s_scroll = 0;
+
             // 检测 ai_chat_active 状态 + 卡死保护
             {
                 static unsigned long ai_chat_stuck_time = 0;
@@ -1534,11 +1537,16 @@ static void guiTask(void* pvParameters) {
                 // 任务启动后首次检测
                 if (ai_chat_stuck_time == 0) {
                     ai_chat_stuck_time = millis();
+                    s_scroll = 0; // 新会话重置滚动
                 }
-                // 超时兜底（5 分钟），不用按键触发——按键留给 AI Chat 任务本身用
+                // 超时兜底（5 分钟无活动），多轮对话时用活动时间戳刷新
                 bool ai_chat_force_exit = false;
-                if (millis() - ai_chat_stuck_time > 300000) {
-                    ai_chat_force_exit = true;
+                {
+                    unsigned long act = ai_chat_activity_time;
+                    unsigned long latest_active = (ai_chat_stuck_time > act) ? ai_chat_stuck_time : act;
+                    if (millis() - latest_active > 300000) {
+                        ai_chat_force_exit = true;
+                    }
                 }
                 if (ai_chat_force_exit) {
                     ai_chat_stuck_time = 0;
@@ -1556,6 +1564,18 @@ static void guiTask(void* pvParameters) {
             }
             // AI Chat 活动期间 — guiTask 按阶段渲染
             {
+                const int max_lines = 7;
+
+                // 处理编码器滚动手势 — 仅在 AI_PHASE_REPLY 阶段生效
+                if (enc_delta != 0 && ai_chat_phase == AI_PHASE_REPLY) {
+                    int prev_scroll = s_scroll;
+                    s_scroll += enc_delta;
+                    if (s_scroll < 0) s_scroll = 0;
+                    if (s_scroll != prev_scroll) {
+                        ai_chat_dirty = true; // 强制重绘
+                    }
+                }
+
                 if (ai_chat_dirty) {
                     DRAW_Clear();
                     DRAW_AddRect(0, 0, 2047, 2047); // 全屏边框
@@ -1563,22 +1583,21 @@ static void guiTask(void* pvParameters) {
                     const int scale = AI_SCALE;
                     const int margin_x = 50;
                     const int max_width = 2047 - margin_x * 2; // 文本可用像素宽（两侧留边）
-                    const int max_lines = 7;
 
-                    // ---- 像素精确 + 按单词自动换行 ----
-                    static char s_wrapped[7][256];
-                    int line_count = 0;
+                    // ---- 像素精确 + 按单词自动换行（全部文本） ----
+                    static char s_wrapped[32][256];
+                    int total_lines = 0;
                     int src_idx = 0;
 
-                    while (ai_chat_display_text[src_idx] && line_count < max_lines) {
+                    while (ai_chat_display_text[src_idx] && total_lines < 32) {
                         // 跳过前导空格
                         while (ai_chat_display_text[src_idx] == ' ') src_idx++;
                         if (!ai_chat_display_text[src_idx]) break;
 
                         // 显式换行符 → 断行
                         if (ai_chat_display_text[src_idx] == '\n') {
-                            s_wrapped[line_count][0] = '\0';
-                            line_count++;
+                            s_wrapped[total_lines][0] = '\0';
+                            total_lines++;
                             src_idx++;
                             continue;
                         }
@@ -1630,16 +1649,24 @@ static void guiTask(void* pvParameters) {
                         // 复制本行
                         int len = last_fit_end - line_start;
                         if (len > 255) len = 255;
-                        strncpy(s_wrapped[line_count], &ai_chat_display_text[line_start], len);
-                        s_wrapped[line_count][len] = '\0';
-                        line_count++;
+                        strncpy(s_wrapped[total_lines], &ai_chat_display_text[line_start], len);
+                        s_wrapped[total_lines][len] = '\0';
+                        total_lines++;
                     }
 
-                    // 渲染——居中整个文字块
-                    int y = AI_CENTER_Y + (line_count - 1) * AI_REPLY_SPACING / 2;
-                    for (int i = 0; i < line_count; i++) {
+                    // 限制滚动范围
+                    int max_scroll = total_lines > max_lines ? total_lines - max_lines : 0;
+                    if (s_scroll > max_scroll) s_scroll = max_scroll;
+
+                    // 渲染——居中显示可见窗口
+                    int visible = total_lines - s_scroll;
+                    if (visible > max_lines) visible = max_lines;
+                    int y = AI_CENTER_Y + (visible - 1) * AI_REPLY_SPACING / 2;
+                    for (int i = 0; i < max_lines; i++) {
+                        int idx = s_scroll + i;
+                        if (idx >= total_lines) break;
                         if (y < 50) break;
-                        DRAW_AddString(s_wrapped[i], 0, margin_x, y, scale, scale);
+                        DRAW_AddString(s_wrapped[idx], 0, margin_x, y, scale, scale);
                         y -= AI_REPLY_SPACING;
                     }
 
@@ -2917,11 +2944,11 @@ static void serialOutputTask(void* pvParameters) {
     unsigned long now = millis();
     if (now - lastOutputTime >= outputInterval) {
       lastOutputTime = now;
-      USBSerial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
+/*       USBSerial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
         touchRead(TOUCH_UP), 
         touchRead(TOUCH_DOWN), 
         touchRead(TOUCH_LEFT), 
-        touchRead(TOUCH_RIGHT));
+        touchRead(TOUCH_RIGHT)); */
     }
     // 反复打印 SD 卡目录树，方便随时打开串口查看
     if (now - lastTreePrint >= treePrintInterval && !is_playing && !is_video_playing) {

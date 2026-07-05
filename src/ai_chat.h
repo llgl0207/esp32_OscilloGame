@@ -7,6 +7,7 @@
 
 // AI Chat state
 extern volatile bool ai_chat_active;
+extern volatile unsigned long ai_chat_activity_time; // 最后活动时间（看门狗用）
 
 // 阶段式显示 — 每个阶段只显示一条内容在屏幕中央
 enum AIChatPhase {

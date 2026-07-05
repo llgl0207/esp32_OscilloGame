@@ -184,6 +184,6 @@ void loop() {
     digitalWrite(2,!ledState);
     char buffer[100];
     snprintf(buffer, sizeof(buffer), "JOY1X:%d JOY1Y:%d JOY2X:%d JOY2Y:%d S1:%d S2:%d A:%d B:%d ENC:%d", analogRead(JOY1_X), analogRead(JOY1_Y), analogRead(JOY2_X), analogRead(JOY2_Y), digitalRead(JOY1_SW), digitalRead(JOY2_SW), digitalRead(JOY_A), digitalRead(JOY_B), encoderValue);
-  USBSerial.println(buffer);
+  //USBSerial.println(buffer);
   
 }

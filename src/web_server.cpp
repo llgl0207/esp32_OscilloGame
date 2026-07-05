@@ -43,7 +43,7 @@ const char* html = u8R"rawliteral(
     .nav-btn { background-color: #008CBA; }
     .enter-btn { background-color: #f44336; }
     .row { display: flex; justify-content: center; align-items: center; }
-    #ui-status { margin-top: 20px; padding: 10px; border: 1px solid #555; background: rgba(51, 51, 51, 0.8); text-align: left; font-family: monospace; white-space: pre-wrap; min-height: 100px; }
+    #ui-status { margin-top: 20px; padding: 10px; border: 1px solid #555; background: rgba(51, 51, 51, 0.8); text-align: left; font-family: monospace; white-space: pre-wrap; min-height: 100px; max-height: 400px; overflow-y: auto; }
   </style>
   <script>
     var t = 0;
@@ -82,8 +82,6 @@ const char* html = u8R"rawliteral(
   <div id="ui-status">Loading UI Status...</div>
 
   <p>连接至WiFi: ESP32_Game_XX:XX/密码: 12345678</p>
-  <p>南京理工大学 eeCommunity</p>
-  <p><i>由 llgl0207 制作</i></p>
 </body>
 </html>
 )rawliteral";
