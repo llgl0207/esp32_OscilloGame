@@ -36,6 +36,7 @@ volatile bool ai_chat_active = false;
 static Microphone* s_mic = nullptr;
 static char baidu_token[256] = {0};
 static unsigned long token_expires = 0;
+static TaskHandle_t s_aiChatTaskHandle = NULL;
 
 static bool     wifi_connect();
 static bool     wifi_ensure();
@@ -60,15 +61,31 @@ static const char* phase_text(AIChatPhase phase) {
 }
 
 void AI_Chat_Start() {
-    if (ai_chat_active) return;
+    // 如果旧任务 handle 还非 NULL，说明上一轮未正常清理，强制删除
+    if (s_aiChatTaskHandle != NULL) {
+        Serial.println("[AICHAT] Force-killing stale task for re-entry");
+        vTaskDelete(s_aiChatTaskHandle);
+        s_aiChatTaskHandle = NULL;
+    }
+
+    // 清除可能残留的语音动作（防上一轮未消费）
+    voice_pending = false;
+    voice_action = VC_NONE;
+    // 清除残留 MIC 指针
+    if (s_mic) { delete s_mic; s_mic = nullptr; }
+    // 重置阶段
+    ai_chat_phase = AI_PHASE_IDLE;
+
     ai_chat_active = true;
-    if (xTaskCreatePinnedToCore(ai_chat_task, "AIChatTask", 16384, NULL, 1, NULL, 0) != pdPASS) {
+    if (xTaskCreatePinnedToCore(ai_chat_task, "AIChatTask", 16384, NULL, 1, &s_aiChatTaskHandle, 0) != pdPASS) {
         ai_chat_active = false;
+        s_aiChatTaskHandle = NULL;
     }
 }
 
 void AI_Chat_Stop() {
     ai_chat_active = false;
+    // 如果任务仍在运行，等待其自然退出（task 内检测 ai_chat_active 会 goto done）
 }
 
 // ---- 鍏变韩鍙橀噺 ----
@@ -408,21 +425,22 @@ static void ai_chat_task(void* pvParameters) {
     }
     Serial.printf("[AICHAT] PSRAM buffer: %u bytes\n", alloc_bytes);
 
-    // ---- 绛夊緟 ENTER 鎸変笅褰曢煶 ----
+    // ---- 等待 ENTER 按下录音 ----
     ai_show(AI_PHASE_WAITING, "");
     Serial.println("[AICHAT] WAITING for ENTER press...");
     while (digitalRead(EN_S) == HIGH) {
         if (!ai_chat_active) { Serial.println("[AICHAT] cancelled while waiting ENTER"); goto done; }
         vTaskDelay(pdMS_TO_TICKS(20));
     }
-    Serial.println("[AICHAT] ENTER pressed, debounce...");
-    // 绛夊緟閲婃斁寮€濮嬪綍闊筹紙闃叉姈鍔級
+    Serial.println("[AICHAT] ENTER pressed");
+    // 立即切换阶段，防止 guiTask 上升沿退出
+    ai_show(AI_PHASE_RECORDING, "Recording... release to stop");
+    // 等待释放开始录音（防抖动）
     vTaskDelay(pdMS_TO_TICKS(50));
     Serial.println("[AICHAT] start recording");
 
-    // ---- 褰曢煶鍒?PSRAM ----
-    ai_show(AI_PHASE_RECORDING, "");
-    Serial.println("[AICHAT] Recording... release to stop");
+    // ---- 录音到 PSRAM ----
+    ai_show(AI_PHASE_RECORDING, "Recording...");
 
     total_samples = 0;
     high_cnt = 0;
@@ -533,6 +551,7 @@ done:
     if (s_mic) { delete s_mic; s_mic = nullptr; }
     if (pcm_buffer) { free(pcm_buffer); Serial.println("[AICHAT] pcm_buffer freed"); }
     ai_chat_active = false;
+    s_aiChatTaskHandle = NULL;
     Serial.println("[AICHAT] task exits, vTaskDelete");
     vTaskDelete(NULL);
 }

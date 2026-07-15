@@ -2543,10 +2543,26 @@ static void guiTask(void* pvParameters) {
             updateWebUIStatus(status);
 
         } else if (ui_state == UI_AI_CHAT) {
-            // 按 ENTER 退出 AI Chat（仅空闲/完成/错误阶段允许退出）
+            // 进入 AI Chat 后的忽略按钮时间戳
+            static unsigned long ai_chat_enter_ms = 0;
+            if (last_menu_index == -1) {
+                ai_chat_enter_ms = millis(); // 记录进入时间，用于防误触
+            }
+
+            // 编码器旋转 → 安全退出（任何阶段均可），进入后需等 500ms 防误触
+            if (enc_delta != 0 && (millis() - ai_chat_enter_ms > 500) && ai_chat_phase != AI_PHASE_RECORDING) {
+                AI_Chat_Stop();
+                ui_state = UI_MENU_MAIN;
+                menu_index = 5;
+                last_menu_index = -1;
+                rebuild = true;
+                continue;
+            }
+
+            // 按 ENTER 退出 AI Chat（仅完成/回复/错误阶段允许退出）
             // 录音/ASR/推理中忽略按钮，避免与 ai_chat_task 抢 EN_S 松手信号
-            if (btn_pressed && (ai_chat_phase == AI_PHASE_WAITING ||
-                                ai_chat_phase == AI_PHASE_DONE ||
+            // ★ 进入后 500ms 内忽略按钮（防止菜单选择松手产生的上升沿误触）
+            if (btn_pressed && (millis() - ai_chat_enter_ms > 500) && (ai_chat_phase == AI_PHASE_DONE ||
                                 ai_chat_phase == AI_PHASE_REPLY ||
                                 ai_chat_phase == AI_PHASE_ERROR)) {
                 AI_Chat_Stop();
@@ -2562,6 +2578,11 @@ static void guiTask(void* pvParameters) {
                 VC_Action act = voice_action;
                 voice_pending = false;
                 voice_action = VC_NONE;
+                // 等待 ai_chat_task 自然退出（释放 MIC/PSRAM），最长等 500ms
+                for (int wait_i = 0; wait_i < 25 && ai_chat_active; wait_i++) {
+                    vTaskDelay(pdMS_TO_TICKS(20));
+                }
+                // 强制清理
                 AI_Chat_Stop();
                 switch (act) {
                     case VC_OPEN_MUSIC:
