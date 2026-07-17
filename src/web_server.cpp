@@ -79,7 +79,7 @@ const char* html = u8R"rawliteral(
   <div id="ui-status">Loading UI Status...</div>
 
   <p>连接至WiFi: ESP32_Game_XX:XX/密码: 12345678</p>
-  <p>南京理工大学 eeCommunity</p>
+  <!--<p>南京理工大学 eeCommunity</p>-->
   <p><i>由 llgl0207 制作</i></p>
 </body>
 </html>
