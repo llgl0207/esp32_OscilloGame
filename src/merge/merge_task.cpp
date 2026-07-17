@@ -17,6 +17,11 @@
 #include <HTTPClient.h>
 #include <driver/i2s.h>
 #include <esp_heap_caps.h>
+#include <esp_now.h>
+
+// 引入 Network_Manager 和 initWebServer 以在 .dis. 时恢复
+#include "network_manager.h"
+extern void initWebServer();
 
 // ============================================================
 // 配置常量（从 st7789IoT main.cpp 移植）
@@ -34,14 +39,14 @@
 #define MAX_RECORD_SAMPLES   (SAMPLE_RATE * MAX_RECORD_SECONDS)
 
 // ---- Baidu ASR ----
-// 使用 ai_config.h 中 MERGE_* 独立配置
+// 凭据定义在 ai_config.h 中（MERGE_BAIDU_APIKEY, MERGE_BAIDU_SECKEY）
 #define BAIDU_DEVPID    80001
 #define BAIDU_AUTH_HOST "aip.baidubce.com"
 #define BAIDU_AUTH_PATH "/oauth/2.0/token"
 #define BAIDU_PRO_URL   "http://vop.baidu.com/pro_api"  // 用 HTTP 不走 SSL，更稳定
 
 // ---- DeepSeek ----
-// 使用 ai_config.h 中 MERGE_DEEPSEEK_API_KEY
+// 凭据定义在 ai_config.h 中（MERGE_DEEPSEEK_API_KEY）
 #define SYSTEM_PROMPT    "You are a helpful chat assistant. You can answer in Chinese by default. Don't send Emoji. Keep responses short and natural."
 
 // ============================================================
@@ -277,7 +282,23 @@ static bool wifi_connect_sta() {
 
 static void wifi_disconnect_sta() {
     WiFi.disconnect(true);
-    Serial.println("[MERGE] WiFi disconnected");
+    delay(100);
+
+    // ---- 恢复 AP_STA 模式，重新初始化 ESP-NOW 和 WebServer ----
+    Serial.println("[MERGE] Restoring AP+ESP-NOW...");
+
+    // 先 deinit ESP-NOW（以防残留状态）
+    esp_now_deinit();
+    delay(20);
+
+    // 切换回 AP_STA 模式并重新初始化网络
+    WiFi.mode(WIFI_AP_STA);
+    delay(50);
+
+    // 直接调用 Network_Manager::enable()（内部 init + softAP）
+    Network_Manager::enable();
+
+    Serial.println("[MERGE] ESP-NOW and AP restored");
 }
 
 // ---- 录音任务（FreeRTOS，在 Core 1 上轮询 I2S）----
