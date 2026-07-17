@@ -1,0 +1,11 @@
+Master A
+E0:72:A1:F4:81:00
+
+Slave A
+B4:E6:2D:47:CA:BE
+
+Master B
+DC:B4:D9:21:5D:7C
+
+Slave B
+84:0D:8E:BF:C9:3D

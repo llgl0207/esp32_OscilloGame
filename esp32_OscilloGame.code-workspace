@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Arduino/esp8266/esp8266practice"
+		},
+		{
+			"path": "../../Arduino/esp32s3st7789IoT"
+		}
+	],
+	"settings": {}
+}

@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include "pins.h"
 
-// --- ESP-NOW 无线手柄 MAC 地址 ---
+// --- ESP-NOW 无线手柄 MAC 地址 ---//84:0D:8E:BF:C9:3D
 extern const uint8_t GAMEPAD_SLAVE_MAC[6] = {0x84, 0x0D, 0x8E, 0xBF, 0xC9, 0x3D};
 #include "freertos.h"
 #include "DACoutput.h"
@@ -10,6 +10,7 @@ extern const uint8_t GAMEPAD_SLAVE_MAC[6] = {0x84, 0x0D, 0x8E, 0xBF, 0xC9, 0x3D}
 #include "FS.h"
 #include "SD_MMC.h"
 #include "dac8554.h"
+#include "merge/merge_task.h"  // 串口对话模块
 
 // 使用硬件 SPI (CS=10)。SPI 引脚为默认值 (MOSI=11, SCLK=12)
 DAC8554 dac(DAC_CS); 
@@ -181,7 +182,44 @@ DRAW_Terminal_Print("CHECKING RAM...");
 
 // 主循环函数
 void loop() {
-  // 主循环为空，UI 由 FreeRTOS 任务处理
+  // ---- 串口指令解析（支持无换行发送）----
+  // 策略：每收到一个字符就检查 serial_buf 是否匹配已知命令
+  // 匹配成功则立即执行并清空缓冲区，不等待换行
+  static String serial_buf = "";
+  while (Serial.available()) {
+    char c = Serial.read();
+    // 换行/回车当作命令结束标志，同时也清一下
+    if (c == '\n' || c == '\r') {
+      if (serial_buf.length() > 0) {
+        String cmd = serial_buf;
+        serial_buf = "";
+        if (cmd.startsWith(".")) {
+          Merge_HandleCommand(cmd);
+        }
+      }
+    } else {
+      serial_buf += c;
+      // 实时检查是否匹配已知命令（无换行触发）
+      // 格式: .en. .s. .e. .l. .dis. 和 .u[文本]
+      if (serial_buf.endsWith(".") && serial_buf.startsWith(".") && serial_buf.length() >= 3) {
+        // 匹配 .xxx. 格式：检查倒数第二个字符前是否都是字母
+        String inner = serial_buf.substring(1, serial_buf.length() - 1);
+        if (inner == "en" || inner == "dis" || inner == "s" || inner == "e" || inner == "l") {
+          String cmd = serial_buf;
+          serial_buf = "";
+          Merge_HandleCommand(cmd);
+        }
+      }
+      // .u[文本] 格式
+      else if (serial_buf.startsWith(".u[") && serial_buf.endsWith("]")) {
+        String cmd = serial_buf;
+        serial_buf = "";
+        Merge_HandleCommand(cmd);
+      }
+    }
+  }
+
+  // ---- 原始 LED 闪烁逻辑 ----
   delay(100); 
   static bool ledState = false;
     ledState = !ledState;
@@ -191,7 +229,7 @@ void loop() {
     static unsigned long last_mac_print = 0;
     if (millis() - last_mac_print >= 10000) {
       last_mac_print = millis();
-      Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());
+      //Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());//这一行每10s串口打印一次MAC地址，注释以关闭
     }
   
 }

@@ -15,4 +15,11 @@
 // 替换为你的 DeepSeek API Key (https://platform.deepseek.com/api_keys)
 #define DEEPSEEK_API_KEY "your_deepseek_api_key"
 
+// ==================== 独立串口对话模块 (src/merge/) ====================
+// 以下为从 st7789IoT 工程迁移的语音+LLM 链路专用凭据
+// 若不需要该功能可留空
+#define MERGE_BAIDU_APIKEY    "your_baidu_api_key"
+#define MERGE_BAIDU_SECKEY    "your_baidu_secret_key"
+#define MERGE_DEEPSEEK_API_KEY "your_deepseek_api_key"
+
 #endif // CONFIG_H
