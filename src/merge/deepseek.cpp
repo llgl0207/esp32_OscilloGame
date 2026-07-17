@@ -10,6 +10,25 @@ static const int   DS_TIMEOUT  = 15000;   // ms
 static const int   DS_MAX_TOKENS = 2048;
 
 // ============================================================
+// 过滤非 ASCII 字符（保留可打印 ASCII 32~126 + \n \r）
+// ============================================================
+static String filterNonASCII(const String& input) {
+    String out;
+    out.reserve(input.length());
+    for (size_t i = 0; i < input.length(); i++) {
+        char c = input[i];
+        if (c >= 32 && c <= 126) {
+            out += c;
+        } else if (c == '\n' || c == '\r' || c == '\t') {
+            out += c;
+        } else {
+            out += ' ';  // 非 ASCII 替换为空格
+        }
+    }
+    return out;
+}
+
+// ============================================================
 // 构造函数
 // ============================================================
 DeepSeekClient::DeepSeekClient()
@@ -233,7 +252,10 @@ String DeepSeekClient::chat(const String& userMessage) {
         result = "__EMPTY_RESPONSE__";
     }
 
-    // ---- 4. 把助手回复加入历史 ----
+    // ---- 4. 过滤非 ASCII 字符（根源性杜绝中文等非英文字符）----
+    result = filterNonASCII(result);
+
+    // ---- 5. 把助手回复加入历史 ----
     if (!result.startsWith("__")) {
         _history[_msgCount].role    = "assistant";
         _history[_msgCount].content = result;

@@ -55,6 +55,7 @@ extern void initWebServer();
 volatile bool merge_active = false;
 String        merge_asr_result = "";
 String        merge_last_reply = "";
+String        merge_user_suffix = "";  // 默认无后缀
 
 // ============================================================
 // 内部状态
@@ -386,6 +387,7 @@ void Merge_Init() {
     merge_active = true;
     merge_asr_result = "";
     merge_last_reply = "";
+    merge_user_suffix = "(you can only answer in English, do not include any non-ASCII Characters)";  // 默认持久提示词
     audio_samples = 0;
     is_recording = false;
 
@@ -494,8 +496,14 @@ void Merge_RunLLM(const String& text) {
         return;
     }
 
+    // 拼接持久后缀
+    String text_with_suffix = text;
+    if (merge_user_suffix.length() > 0) {
+        text_with_suffix += " " + merge_user_suffix;
+    }
+
     Serial.println("[MERGE] Calling DeepSeek LLM...");
-    String reply = s_llm.chat(text);
+    String reply = s_llm.chat(text_with_suffix);
     s_llm.resetHistory();
 
     if (reply.length() > 0 && !reply.startsWith("__")) {

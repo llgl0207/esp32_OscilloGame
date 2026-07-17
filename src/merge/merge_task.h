@@ -22,6 +22,7 @@
 extern volatile bool merge_active;      // 串口对话模式是否启用
 extern String        merge_asr_result;  // 最近一次 ASR 识别结果
 extern String        merge_last_reply;  // 最近一次 LLM 回复
+extern String        merge_user_suffix; // 始终附加在用户文本后的持久提示词
 
 // ---- 初始化/反初始化 ----
 void Merge_Init();      // 初始化模块（I2S mic, ASR token, DeepSeek client）
