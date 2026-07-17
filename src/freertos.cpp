@@ -367,8 +367,8 @@ void Init_Breakout_Game(void) {
     // 重置球
     brk_ball.x = 1024;
     brk_ball.y = 750;
-    brk_ball.vx = 15; 
-    brk_ball.vy = 15;
+    brk_ball.vx = 22; 
+    brk_ball.vy = 22;
 
     // 重置砖块
     brk_brick_count = 0;
@@ -442,8 +442,8 @@ void Update_Breakout_Game(int16_t encoder_delta) {
             // 重置球
             brk_ball.x = 1024;
             brk_ball.y = 750;
-            brk_ball.vx = 15;
-            brk_ball.vy = 15;
+            brk_ball.vx = 22;
+            brk_ball.vy = 22;
         }
     }
 
@@ -576,7 +576,7 @@ void Update_Racing_Game(int16_t encoder_delta) {
     if(race_car.x > 2048 - RACE_CAR_W) race_car.x = 2048 - RACE_CAR_W;
     
     // 移动障碍物
-    int current_speed = RACE_SPEED + (race_score * 0.25);
+    int current_speed = RACE_SPEED + (race_score * 0.4);
     if(current_speed > 75) current_speed = 75; // 限制速度
 
     for(int i=0; i<RACE_MAX_OBSTACLES; i++) {
@@ -648,8 +648,18 @@ void Update_RunTiny_Game(int jump_requested) {
     }
     
     // 移动障碍物
-    int current_speed = RUN_SPEED + (run_score * 0.1);
-    if(current_speed > 50) current_speed = 50;
+    float speed_ratio = 1.0f + run_score * 0.05f; // 每分+5%, 上限3倍
+    if (speed_ratio > 3.0f) speed_ratio = 3.0f;
+    int current_speed = (int)(RUN_SPEED * speed_ratio);
+    if(current_speed > 60) current_speed = 60;
+    
+    // 障碍物间距随速度等比例放大, 保证可玩性
+    int base_spacing = 600;
+    int spacing_vary = 750;
+    int scaled_spacing = (int)(base_spacing * speed_ratio);
+    int scaled_vary = (int)(spacing_vary * speed_ratio);
+    if (scaled_spacing < 600) scaled_spacing = 600;
+    if (scaled_vary < 750) scaled_vary = 750;
     
     for(int i=0; i<RUN_MAX_OBSTACLES; i++) {
         run_obstacles[i].x -= current_speed;
@@ -661,8 +671,7 @@ void Update_RunTiny_Game(int jump_requested) {
             for(int j=0; j<RUN_MAX_OBSTACLES; j++) {
                 if(run_obstacles[j].x > max_x) max_x = run_obstacles[j].x;
             }
-            // 更随机的间距: 600 到 1350
-            run_obstacles[i].x = max_x + 600 + (rand() % 750);
+            run_obstacles[i].x = max_x + scaled_spacing + (rand() % scaled_vary);
             run_obstacles[i].passed = 0;
         }
         
@@ -1237,6 +1246,28 @@ static void guiTask(void* pvParameters) {
             if (gp.dirPad != 255) {
                 web_game_dir = gp.dirPad;
             }
+            
+            // --- 右摇杆上下推 → 菜单光标脉冲移动 ---
+            // 注意: 用户手柄装配XY轴接反了, 右摇杆 joy2X 是实际Y(上下), joy2Y 是实际X(左右)
+            if (ui_state == UI_MENU_MAIN || ui_state == UI_MENU_GAMES || 
+                ui_state == UI_MENU_MUSIC || ui_state == UI_MENU_VIDEO ||
+                ui_state == UI_MENU_ONLINE) {
+                static int16_t last_joy2_offset = 0;
+                int16_t j2y = gp.joy2X; // 实际物理上下 (joy2X 是实际Y轴)
+                int32_t offset = (int32_t)j2y - 2048;
+                const int16_t MENU_DEADZONE = 400;
+                if (abs(offset) > MENU_DEADZONE) {
+                    // 只在偏移方向变化或刚进入死区时触发一次脉冲
+                    // offset>0=值大=下推→光标下移(dir=1); offset<0=值小=上推→光标上移(dir=-1)
+                    int16_t dir = (offset > 0) ? 1 : -1;
+                    if (last_joy2_offset == 0 || (last_joy2_offset > 0 && offset < 0) || (last_joy2_offset < 0 && offset > 0)) {
+                        enc_delta += dir;
+                    }
+                    last_joy2_offset = offset;
+                } else {
+                    last_joy2_offset = 0;
+                }
+            }
         }
         
         int btn_state = digitalRead(EN_S);
@@ -1279,6 +1310,23 @@ static void guiTask(void* pvParameters) {
             if (web_game_dir != -1) {
                 Game_Input_Dir = web_game_dir;
                 web_game_dir = -1;
+            }
+            
+            // --- 无线手柄左摇杆控制贪吃蛇方向 ---
+            // 注意: 用户手柄装配XY轴接反了, 所以 joy1X 是实际Y, joy1Y 是实际X
+            if (gp_available) {
+                int16_t jx = gp.joy1Y - 2048; // 实际物理左右 (joy1Y 是实际X轴)
+                int16_t jy = gp.joy1X - 2048; // 实际物理上下 (joy1X 是实际Y轴)
+                const int16_t JOY_DEADZONE_SNAKE = 600;
+                if (abs(jx) > JOY_DEADZONE_SNAKE || abs(jy) > JOY_DEADZONE_SNAKE) {
+                    if (abs(jx) > abs(jy)) {
+                        // 左右为主: jx>0 表示右推, 值小表示左推
+                        Game_Input_Dir = (jx < 0) ? 3 : 2; // 右/左
+                    } else {
+                        // 上下为主: jy>0 表示上推, 值小表示下推
+                        Game_Input_Dir = (jy < 0) ? 0 : 1; // 上/下
+                    }
+                }
             }
         }
 
@@ -2236,7 +2284,21 @@ static void guiTask(void* pvParameters) {
                 continue;
             }
             
-            Update_Breakout_Game(enc_delta);
+            // --- 无线手柄左摇杆控制挡板 (线性速度) ---
+            // 注意: 用户手柄装配XY轴接反了, 左右用 joy1Y
+            int16_t brk_enc = enc_delta;
+            if (gp_available) {
+                int16_t jy = gp.joy1Y; // 实际物理左右
+                const int16_t JOY_DEADZONE = 300;
+                int32_t offset = (int32_t)jy - 2048;
+                if (abs(offset) > JOY_DEADZONE) {
+                    int16_t speed = -offset / 1024;
+                    if (speed == 0) speed = (offset < 0) ? 1 : -1;
+                    brk_enc += speed;
+                }
+            }
+            
+            Update_Breakout_Game(brk_enc);
             
             DRAW_Clear();
             DRAW_AddRect(0, 0, 2047, 2047);
@@ -2307,6 +2369,13 @@ static void guiTask(void* pvParameters) {
             }
             last_touch_up = current_touch_up;
             
+            // --- 无线手柄 B 按钮控制 Flappy 跳跃 (上升沿) ---
+            static bool flp_gp_last_btnB = false;
+            if (gp_available && gp.btnB && !flp_gp_last_btnB) {
+                jump = 1;
+            }
+            flp_gp_last_btnB = (gp_available && gp.btnB);
+            
             Update_Flappy_Game(jump);
             
             DRAW_Clear();
@@ -2361,7 +2430,21 @@ static void guiTask(void* pvParameters) {
                 continue;
             }
             
-            Update_Racing_Game(enc_delta);
+            // --- 无线手柄左摇杆控制赛车 (线性速度) ---
+            // 注意: 用户手柄装配XY轴接反了, 左右用 joy1Y
+            int16_t race_enc = enc_delta;
+            if (gp_available) {
+                int16_t jy = gp.joy1Y; // 实际物理左右
+                const int16_t JOY_DEADZONE = 300;
+                int32_t offset = (int32_t)jy - 2048;
+                if (abs(offset) > JOY_DEADZONE) {
+                    int16_t speed = -offset / 1024;
+                    if (speed == 0) speed = (offset < 0) ? 1 : -1;
+                    race_enc += speed;
+                }
+            }
+            
+            Update_Racing_Game(race_enc);
             
             DRAW_Clear();
             DRAW_AddRect(0, 0, 2047, 2047);
@@ -2420,6 +2503,13 @@ static void guiTask(void* pvParameters) {
                 jump = 1;
             }
             last_touch_up = current_touch_up;
+            
+            // --- 无线手柄 B 按钮控制 RunTiny 跳跃 (上升沿) ---
+            static bool run_gp_last_btnB = false;
+            if (gp_available && gp.btnB && !run_gp_last_btnB) {
+                jump = 1;
+            }
+            run_gp_last_btnB = (gp_available && gp.btnB);
             
             Update_RunTiny_Game(jump);
             
@@ -2860,16 +2950,16 @@ static void guiTask(void* pvParameters) {
 
 static void serialOutputTask(void* pvParameters) {
   unsigned long lastOutputTime = 0;
-  const unsigned long outputInterval = 10000; // 200ms 间隔
+  const unsigned long outputInterval = 1000; // 200ms 间隔
   //循环输出触摸值
   for (;;) {
     if (millis() - lastOutputTime >= outputInterval) {
       lastOutputTime = millis();
-/*       Serial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
+      Serial.printf("Touch(Cap): U=%d D=%d L=%d R=%d\n", 
         touchRead(TOUCH_UP), 
         touchRead(TOUCH_DOWN), 
         touchRead(TOUCH_LEFT), 
-        touchRead(TOUCH_RIGHT)); */
+        touchRead(TOUCH_RIGHT));
         
     }
     vTaskDelay(pdMS_TO_TICKS(50));
