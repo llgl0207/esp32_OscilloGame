@@ -33,6 +33,8 @@ void Set_Player_Mode(int mode);
 void Init_GameAudio_Buffer();                  // 初始化游戏音效 PSRAM 缓冲区
 uint16_t* Get_GameAudio_Buf_L();               // 获取音效左声道缓冲区指针
 uint16_t* Get_GameAudio_Buf_R();               // 获取音效右声道缓冲区指针
-void Start_GameAudio(int sample_count);        // 开始播放 (sample_count 个样本)
+void Start_GameAudio(int sample_count);        // 开始播放，自动清除准备标志
+void Begin_GameAudio_Prepare();                // 标记开始写入缓冲区（暂停ISR读取）
+void End_GameAudio_Prepare();                  // 取消准备状态（写入失败时调用）
 bool Is_GameAudio_Finished();                  // 音效是否已播放完毕
 int  Get_GameAudio_MaxSamples();               // 缓冲区最大样本数

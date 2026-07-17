@@ -16,13 +16,22 @@ enum NetMsgType {
     MSG_END_GAME
 };
 
-// Game Data Structure
+// Game Data Structure (坦克大战)
 struct TankData {
     float x, y, angle;
     uint8_t bullet_count;
     struct {
         float x, y;
     } bullets[5];
+};
+
+// Game Data Structure (乒乓球)
+struct PongData {
+    float ball_x, ball_y;    // 球位置
+    float ball_vx, ball_vy;  // 球速度
+    float paddle1_y;         // 玩家1挡板Y (左)
+    float paddle2_y;         // 玩家2挡板Y (右)
+    int score1, score2;      // 得分
 };
 
 // --- ESP-NOW 无线手柄数据 ---
@@ -50,6 +59,7 @@ typedef struct {
     union {
         uint8_t padding[8];
         TankData tank_data;
+        PongData pong_data;
         struct {
             uint8_t game_id;
             uint32_t seed;
@@ -89,11 +99,13 @@ public:
     // Game Methods
     static void startGame(uint8_t gameId, uint32_t seed);
     static void sendGameData(const TankData& data);
+    static void sendPongData(const PongData& data);
     static void endGame(uint8_t reason);
     
     static bool hasGameRequest(uint8_t* gameIdOut, uint32_t* seedOut);
     static void clearGameRequest();
     static bool getRemoteGameData(TankData* dataOut);
+    static bool getRemotePongData(PongData* dataOut);
     static bool isRemoteGameEnded(uint8_t* reasonOut);
     static void clearRemoteGameEnded();
 

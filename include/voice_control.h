@@ -21,6 +21,7 @@ typedef enum {
     VC_START_RACING,    // 启动赛车
     VC_START_RUNTINY,   // 启动 RunTiny
     VC_START_TANK,      // 启动坦克大战
+    VC_START_PONG,      // 启动乒乓球
     VC_BACK,            // 返回上级菜单
     VC_EXIT             // 退出到主菜单
 } VC_Action;

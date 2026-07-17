@@ -190,6 +190,29 @@ static int tank_game_over = 0;
 static unsigned long last_fire_time = 0;
 static bool tank_is_multiplayer = false;  // 是否为多人对战模式
 
+// --- 乒乓球游戏变量 ---
+#define PONG_PADDLE_W 30
+#define PONG_PADDLE_H 250
+#define PONG_BALL_R 20
+#define PONG_BALL_SPEED_INIT 22.0f
+#define PONG_SPEED_MAX 45.0f
+#define PONG_PADDLE1_X 150       // 玩家1挡板X (左)
+#define PONG_PADDLE2_X 1897      // 玩家2挡板X (右)
+#define PONG_WIN_SCORE 11
+
+typedef struct {
+    float ball_x, ball_y;
+    float ball_vx, ball_vy;
+    float paddle1_y, paddle2_y;  // 挡板中心Y
+    int score1, score2;
+    int game_over;
+    bool sfx_gameover_played;     // 防止重复播放游戏结束音效
+} PongGame;
+
+static PongGame pong;
+static bool pong_is_multiplayer = false;
+static unsigned long pong_last_hit_time = 0;
+
 // 触摸引脚
 #define TOUCH_UP    4
 #define TOUCH_DOWN  6
@@ -265,6 +288,7 @@ enum UI_State {
     UI_RACING,
     UI_RUNTINY,
     UI_TANK, // 新增坦克游戏
+    UI_PONG, // 新增乒乓球游戏
     UI_ABOUT,
     UI_AI_CHAT
 };
@@ -287,9 +311,10 @@ static const char* games_menu_items[] = {
     "Racing",
     "RunTiny",
     "Tank", // 新增游戏
+    "Pong", // 乒乓球
     "Back"
 };
-static const int games_menu_count = 7;
+static const int games_menu_count = 8;
 
 // --- 贪吃蛇游戏逻辑 ---
 void Init_Snake_Game(void) {
@@ -1027,6 +1052,221 @@ void Update_Tank_Game(void) {
     }
 }
 
+// ============================================================
+// 乒乓球游戏逻辑
+// ============================================================
+
+void Init_Pong_Game(uint32_t seed, bool is_initiator) {
+    bool p2p_connected = (Network_Manager::getState() == NET_CONNECTED || 
+                          Network_Manager::getState() == NET_IN_GAME);
+    pong_is_multiplayer = p2p_connected;
+
+    if (!p2p_connected) {
+        // 单人模式 — AI 对手
+        if (seed == 0) seed = millis();
+        srand(seed);
+        pong.ball_x = 1024;
+        pong.ball_y = 1024;
+        float angle = (rand() % 314) / 100.0f - 1.57f; // -π/2 ~ π/2
+        if (abs(angle) < 0.3f) angle = (angle > 0) ? 0.3f : -0.3f;
+        pong.ball_vx = PONG_BALL_SPEED_INIT * cos(angle);
+        pong.ball_vy = PONG_BALL_SPEED_INIT * sin(angle);
+        pong.paddle1_y = 1024;
+        pong.paddle2_y = 1024;
+        pong.score1 = 0;
+        pong.score2 = 0;
+        pong.game_over = 0;
+    pong.sfx_gameover_played = false;
+    pong_last_hit_time = 0;
+    Network_Manager::clearRemoteGameEnded();
+    return;
+}
+
+// 多人模式
+if (is_initiator) {
+    if (seed == 0) seed = millis();
+    Network_Manager::startGame(2, seed); // game_id=2 → Pong
+}
+
+srand(seed);
+pong.ball_x = 1024;
+pong.ball_y = 1024;
+float angle = (rand() % 314) / 100.0f - 1.57f;
+if (abs(angle) < 0.3f) angle = (angle > 0) ? 0.3f : -0.3f;
+pong.ball_vx = PONG_BALL_SPEED_INIT * cos(angle);
+pong.ball_vy = PONG_BALL_SPEED_INIT * sin(angle);
+pong.paddle1_y = 1024;
+pong.paddle2_y = 1024;
+pong.score1 = 0;
+pong.score2 = 0;
+pong.game_over = 0;
+pong.sfx_gameover_played = false;
+pong_last_hit_time = 0;
+Network_Manager::clearRemoteGameEnded();
+}
+
+void Update_Pong_Game(void) {
+    if (pong.game_over) return;
+
+    // 检查远程退出
+    if (pong_is_multiplayer) {
+        uint8_t reason;
+        if (Network_Manager::isRemoteGameEnded(&reason)) {
+            pong.game_over = (reason == 1) ? 4 : 3;
+            if (reason == 1 && !pong.sfx_gameover_played) {
+                pong.sfx_gameover_played = true; sfxGameOver();
+            }
+            return;
+        }
+    }
+
+    // ---- 读取玩家输入 ----
+    int fwd_axis = analogRead(JOY2_X); // 右摇杆 X (物理上下)
+    int rot_axis = analogRead(JOY1_Y); // 左摇杆 Y (物理左右)
+
+    GamepadData gp;
+    if (Network_Manager::getGamepadData(&gp)) {
+        fwd_axis = gp.joy2X;
+        rot_axis = gp.joy1Y;
+    }
+
+    // 玩家1 (左挡板): 左摇杆上下 → paddle1_y
+    float p1_move = 0;
+    if (abs(fwd_axis - 2048) > 300) {
+        p1_move = (2048 - fwd_axis) / 2048.0f * 30.0f; // 速度 30
+    }
+    pong.paddle1_y += p1_move;
+    if (pong.paddle1_y < PONG_PADDLE_H / 2) pong.paddle1_y = PONG_PADDLE_H / 2;
+    if (pong.paddle1_y > 2047 - PONG_PADDLE_H / 2) pong.paddle1_y = 2047 - PONG_PADDLE_H / 2;
+
+    // 玩家2 (右挡板): 单人AI 或 遥控对手
+    if (!pong_is_multiplayer) {
+        // AI: 追踪球
+        float target = pong.ball_y;
+        float diff = target - pong.paddle2_y;
+        float ai_speed = 12.0f;
+        if (abs(diff) < ai_speed) {
+            pong.paddle2_y = target;
+        } else if (diff > 0) {
+            pong.paddle2_y += ai_speed;
+        } else {
+            pong.paddle2_y -= ai_speed;
+        }
+        if (pong.paddle2_y < PONG_PADDLE_H / 2) pong.paddle2_y = PONG_PADDLE_H / 2;
+        if (pong.paddle2_y > 2047 - PONG_PADDLE_H / 2) pong.paddle2_y = 2047 - PONG_PADDLE_H / 2;
+    } else {
+        // 多人模式: 仅同步对手挡板位置，双方独立运行球物理（同坦克模型）
+        PongData remote;
+        if (Network_Manager::getRemotePongData(&remote)) {
+            pong.paddle2_y = remote.paddle1_y;
+        }
+    }
+
+    // ---- 球物理 ----
+    pong.ball_x += pong.ball_vx;
+    pong.ball_y += pong.ball_vy;
+
+    // 上下边界反弹
+    if (pong.ball_y <= PONG_BALL_R) {
+        pong.ball_y = PONG_BALL_R;
+        pong.ball_vy = -pong.ball_vy;
+        sfxBounce();
+    }
+    if (pong.ball_y >= 2047 - PONG_BALL_R) {
+        pong.ball_y = 2047 - PONG_BALL_R;
+        pong.ball_vy = -pong.ball_vy;
+        sfxBounce();
+    }
+
+    // 左挡板碰撞
+    if (pong.ball_x - PONG_BALL_R <= PONG_PADDLE1_X + PONG_PADDLE_W / 2 &&
+        pong.ball_x + PONG_BALL_R >= PONG_PADDLE1_X - PONG_PADDLE_W / 2 &&
+        pong.ball_y >= pong.paddle1_y - PONG_PADDLE_H / 2 &&
+        pong.ball_y <= pong.paddle1_y + PONG_PADDLE_H / 2) {
+        pong.ball_x = PONG_PADDLE1_X + PONG_PADDLE_W / 2 + PONG_BALL_R;
+        pong.ball_vx = -pong.ball_vx;
+        // 根据击中位置调整角度
+        float hit_pos = (pong.ball_y - pong.paddle1_y) / (PONG_PADDLE_H / 2);
+        pong.ball_vy += hit_pos * 8.0f;
+        // 加速
+        float speed = sqrt(pong.ball_vx * pong.ball_vx + pong.ball_vy * pong.ball_vy);
+        if (speed < PONG_SPEED_MAX) {
+            pong.ball_vx *= 1.03f;
+            pong.ball_vy *= 1.03f;
+        }
+        sfxBounce();
+    }
+
+    // 右挡板碰撞
+    if (pong.ball_x + PONG_BALL_R >= PONG_PADDLE2_X - PONG_PADDLE_W / 2 &&
+        pong.ball_x - PONG_BALL_R <= PONG_PADDLE2_X + PONG_PADDLE_W / 2 &&
+        pong.ball_y >= pong.paddle2_y - PONG_PADDLE_H / 2 &&
+        pong.ball_y <= pong.paddle2_y + PONG_PADDLE_H / 2) {
+        pong.ball_x = PONG_PADDLE2_X - PONG_PADDLE_W / 2 - PONG_BALL_R;
+        pong.ball_vx = -pong.ball_vx;
+        float hit_pos = (pong.ball_y - pong.paddle2_y) / (PONG_PADDLE_H / 2);
+        pong.ball_vy += hit_pos * 8.0f;
+        float speed = sqrt(pong.ball_vx * pong.ball_vx + pong.ball_vy * pong.ball_vy);
+        if (speed < PONG_SPEED_MAX) {
+            pong.ball_vx *= 1.03f;
+            pong.ball_vy *= 1.03f;
+        }
+        sfxBounce();
+    }
+
+    // 左边界: 玩家2得分
+    if (pong.ball_x < -PONG_BALL_R) {
+        pong.score2++;
+        sfxHit();
+        if (pong.score2 >= PONG_WIN_SCORE) {
+            pong.game_over = 1;
+            if (!pong.sfx_gameover_played) { pong.sfx_gameover_played = true; sfxGameOver(); }
+        } else {
+            // 重新发球
+            pong.ball_x = 1024; pong.ball_y = 1024;
+            float angle = (rand() % 314) / 100.0f - 1.57f;
+            if (abs(angle) < 0.3f) angle = (angle > 0) ? 0.3f : -0.3f;
+            pong.ball_vx = PONG_BALL_SPEED_INIT * cos(angle);
+            pong.ball_vy = PONG_BALL_SPEED_INIT * sin(angle);
+        }
+    }
+
+    // 右边界: 玩家1得分
+    if (pong.ball_x > 2047 + PONG_BALL_R) {
+        pong.score1++;
+        sfxScore();
+        if (pong.score1 >= PONG_WIN_SCORE) {
+            pong.game_over = 2;
+            if (!pong.sfx_gameover_played) { pong.sfx_gameover_played = true; sfxGameOver(); }
+        } else {
+            // 重新发球
+            pong.ball_x = 1024; pong.ball_y = 1024;
+            float angle = (rand() % 314) / 100.0f - 1.57f;
+            if (abs(angle) < 0.3f) angle = (angle > 0) ? 0.3f : -0.3f;
+            pong.ball_vx = PONG_BALL_SPEED_INIT * cos(angle);
+            pong.ball_vy = PONG_BALL_SPEED_INIT * sin(angle);
+        }
+    }
+
+    // 网络同步
+    if (pong_is_multiplayer) {
+        PongData data;
+        data.ball_x = pong.ball_x;
+        data.ball_y = pong.ball_y;
+        data.ball_vx = pong.ball_vx;
+        data.ball_vy = pong.ball_vy;
+        data.paddle1_y = pong.paddle1_y;
+        data.paddle2_y = pong.paddle2_y;
+        data.score1 = pong.score1;
+        data.score2 = pong.score2;
+        Network_Manager::sendPongData(data);
+
+        if (pong.game_over == 1 || pong.game_over == 2) {
+            Network_Manager::endGame(pong.game_over == 1 ? 1 : 0);
+        }
+    }
+}
+
 // --- 音乐逻辑 ---
 void Scan_Music_Files() {
     music_files.clear();
@@ -1368,6 +1608,10 @@ static void guiTask(void* pvParameters) {
                 ui_state = UI_TANK;
                 Init_Tank_Game(reqSeed, false); // 响应者
                 rebuild = true;
+            } else if(reqGameId == 2) { // 乒乓球
+                ui_state = UI_PONG;
+                Init_Pong_Game(reqSeed, false); // 响应者
+                rebuild = true;
             }
         }
 
@@ -1621,6 +1865,10 @@ static void guiTask(void* pvParameters) {
                     Init_Tank_Game(0, true); // 发起者, Seed=0 (自动)
                     continue;
                 } else if (menu_index == 6) {
+                    ui_state = UI_PONG;
+                    Init_Pong_Game(0, true); // 发起者, Seed=0 (自动)
+                    continue;
+                } else if (menu_index == 7) {
                     ui_state = UI_MENU_MAIN;
                     menu_index = 1; // 返回 "Games" 选项
                     last_menu_index = -1;
@@ -1774,10 +2022,16 @@ static void guiTask(void* pvParameters) {
                         Init_Tank_Game(reqSeed, false);
                         rebuild = true;
                         break;
+                    } else if(reqGameId == 2) { // Pong
+                        Stop_Music();
+                        ui_state = UI_PONG;
+                        Init_Pong_Game(reqSeed, false);
+                        rebuild = true;
+                        break;
                     }
                 }
 
-                // Update Volume
+                // Update Volume (music player)
                 int32_t curr_enc = encoderValue;
                 int delta = (curr_enc - last_enc) / 4; // Sensitivity: 4 encoder counts (1 detent) = 1 volume step
                 if (delta != 0) {
@@ -2031,10 +2285,16 @@ static void guiTask(void* pvParameters) {
                         Init_Tank_Game(reqSeed, false);
                         rebuild = true;
                         break;
+                    } else if(reqGameId == 2) { // Pong
+                        Stop_Video();
+                        ui_state = UI_PONG;
+                        Init_Pong_Game(reqSeed, false);
+                        rebuild = true;
+                        break;
                     }
                 }
 
-                // Update Volume
+                // Update Volume (video player)
                 int32_t curr_enc = encoderValue;
                 int delta = (curr_enc - last_enc) / 4; 
                 if (delta != 0) {
@@ -2747,6 +3007,99 @@ static void guiTask(void* pvParameters) {
             
             updateWebUIStatus(status);
 
+        } else if (ui_state == UI_PONG) {
+            // 乒乓球游戏渲染
+            if (btn_pressed) {
+                ui_state = UI_MENU_GAMES;
+                rebuild = true;
+                last_menu_index = -1;
+                if (pong_is_multiplayer) Network_Manager::endGame(0);
+                continue;
+            }
+
+            Update_Pong_Game();
+
+            DRAW_Clear();
+            DRAW_AddRect(0, 0, 2047, 2047); // 全屏边框
+
+            // 中线和虚线
+            for (int y = 50; y < 2000; y += 80) {
+                DRAW_AddLine(1024, y, 1024, y + 40);
+            }
+
+            // 左挡板 (玩家1)
+            DRAW_AddRect(PONG_PADDLE1_X - PONG_PADDLE_W / 2,
+                         pong.paddle1_y - PONG_PADDLE_H / 2,
+                         PONG_PADDLE_W, PONG_PADDLE_H);
+
+            // 右挡板 (玩家2)
+            DRAW_AddRect(PONG_PADDLE2_X - PONG_PADDLE_W / 2,
+                         pong.paddle2_y - PONG_PADDLE_H / 2,
+                         PONG_PADDLE_W, PONG_PADDLE_H);
+
+            // 球 — 用十字+圆环让它在矢量示波器上更显眼
+            int bx = (int)pong.ball_x, by = (int)pong.ball_y, br = PONG_BALL_R;
+            DRAW_AddCircle(bx, by, br);         // 外圈
+            DRAW_AddCircle(bx, by, br/2);       // 内圈（更密）
+            DRAW_AddLine(bx - br, by, bx + br, by); // 水平线
+            DRAW_AddLine(bx, by - br, bx, by + br); // 垂直线
+
+            // 得分
+            char score_buf[8];
+            sprintf(score_buf, "%d", pong.score1);
+            DRAW_AddString(score_buf, 0, 800, 1900, 24, 24);
+            sprintf(score_buf, "%d", pong.score2);
+            DRAW_AddString(score_buf, 0, 1200, 1900, 24, 24);
+
+            String status = "GAME: PONG\n";
+
+            if (pong.game_over) {
+                if (pong.game_over == 1) {
+                    DRAW_AddString("YOU LOSE", 0, 600, 1100, 20, 20);
+                    status += "YOU LOSE\n";
+                } else if (pong.game_over == 2) {
+                    DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
+                    status += "YOU WIN\n";
+                } else if (pong.game_over == 3) {
+                    DRAW_AddString("OPPONENT LEFT", 0, 400, 1100, 20, 20);
+                    status += "OPPONENT LEFT\n";
+                } else if (pong.game_over == 4) {
+                    DRAW_AddString("YOU WIN", 0, 600, 1100, 20, 20);
+                    status += "YOU WIN (opponent died)\n";
+                }
+
+                // 2秒后自动退出
+                static unsigned long pong_exit_timer = 0;
+                if (pong_exit_timer == 0) pong_exit_timer = millis();
+                if (millis() - pong_exit_timer > 2000) {
+                    ui_state = UI_MENU_GAMES;
+                    rebuild = true;
+                    last_menu_index = -1;
+                    pong_exit_timer = 0;
+                    if (pong_is_multiplayer) {
+                        Network_Manager::endGame(0);
+                    }
+                }
+            } else {
+                if (!pong_is_multiplayer) {
+                    DRAW_AddString("P1", 0, PONG_PADDLE1_X - 20, 100, 18, 18);
+                    DRAW_AddString("CPU", 0, PONG_PADDLE2_X - 30, 100, 18, 18);
+                    status += "OFFLINE (vs AI)\n";
+                } else {
+                    DRAW_AddString("P1", 0, PONG_PADDLE1_X - 20, 100, 18, 18);
+                    DRAW_AddString("P2", 0, PONG_PADDLE2_X - 30, 100, 18, 18);
+                    status += "MULTIPLAYER\n";
+                }
+            }
+
+            if (!is_joystick_connected) {
+                DRAW_AddString("JOYSTICK", 0, 400, 900, 20, 20);
+                DRAW_AddString("DISCONNECTED", 0, 400, 700, 20, 20);
+                status += "JOYSTICK DISCONNECTED\n";
+            }
+
+            updateWebUIStatus(status);
+
         } else if (ui_state == UI_AI_CHAT) {
             // ============================================================
             // 新 AI Chat — 使用迁移链路（merge_task）
@@ -2873,6 +3226,8 @@ static void guiTask(void* pvParameters) {
                             ui_state = UI_RUNTINY; Init_RunTiny_Game(); continue;
                         case VC_START_TANK:
                             ui_state = UI_TANK; Init_Tank_Game(0, true); continue;
+                        case VC_START_PONG:
+                            ui_state = UI_PONG; Init_Pong_Game(0, true); continue;
                         case VC_BACK:
                         case VC_EXIT:
                         default:

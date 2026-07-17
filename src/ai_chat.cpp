@@ -296,7 +296,7 @@ static String deepseek_chat(const String& text) {
             "Actions: open_music, open_video, open_games, open_online, "
             "open_game_joy, open_ai_chat, open_about, "
             "start_snake, start_breakout, start_flappy, start_racing, "
-            "start_runtiny, start_tank, back, exit";
+            "start_runtiny, start_tank, start_pong, back, exit";
 
         JsonObject user = messages.add<JsonObject>();
         user["role"] = "user";

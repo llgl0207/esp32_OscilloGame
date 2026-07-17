@@ -67,7 +67,7 @@ extern void initWebServer();
     "Actions: open_music, open_video, open_games, open_online, " \
     "open_game_joy, open_about, " \
     "start_snake, start_breakout, start_flappy, start_racing, " \
-    "start_runtiny, start_tank, back"
+    "start_runtiny, start_tank, start_pong, back"
 
 // ============================================================
 // 模块状态

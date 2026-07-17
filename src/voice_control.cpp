@@ -13,7 +13,7 @@ static const char* action_names[] = {
     "open_music", "open_video", "open_games", "open_online",
     "open_game_joy", "open_ai_chat", "open_about",
     "start_snake", "start_breakout", "start_flappy",
-    "start_racing", "start_runtiny", "start_tank",
+    "start_racing", "start_runtiny", "start_tank", "start_pong",
     "back", "exit"
 };
 static const int action_count = sizeof(action_names) / sizeof(action_names[0]);

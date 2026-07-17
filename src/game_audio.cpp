@@ -48,6 +48,10 @@ static int renderSquareWave(uint16_t* buf, uint32_t freq, uint32_t duration_ms) 
 static void renderSequence(const uint32_t* freqs, const uint32_t* durs, int steps) {
     uint16_t* bufL = Get_GameAudio_Buf_L();
     uint16_t* bufR = Get_GameAudio_Buf_R();
+    if (!bufL || !bufR) return;  // PSRAM 分配失败，安全退出
+    
+    Begin_GameAudio_Prepare();   // 通知 ISR 暂停读取
+    
     int max_samples = Get_GameAudio_MaxSamples();
     int total = 0;
 
@@ -98,21 +102,33 @@ void gameAudioUpdate() {
 
 void sfxEat() {
     uint16_t* buf = Get_GameAudio_Buf_L();
+    if (!buf) return;
+    Begin_GameAudio_Prepare();
     int n = renderSquareWave(buf, 880, 60);
     if (n > 0) {
         uint16_t* bufR = Get_GameAudio_Buf_R();
-        memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
-        Start_GameAudio(n);
+        if (bufR) {
+            memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
+            Start_GameAudio(n);
+        }
+    } else {
+        End_GameAudio_Prepare();
     }
 }
 
 void sfxHit() {
     uint16_t* buf = Get_GameAudio_Buf_L();
+    if (!buf) return;
+    Begin_GameAudio_Prepare();
     int n = renderSquareWave(buf, 440, 80);
     if (n > 0) {
         uint16_t* bufR = Get_GameAudio_Buf_R();
-        memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
-        Start_GameAudio(n);
+        if (bufR) {
+            memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
+            Start_GameAudio(n);
+        }
+    } else {
+        End_GameAudio_Prepare();
     }
 }
 
@@ -129,6 +145,7 @@ void sfxScore() {
 }
 
 void sfxGameOver() {
+    return;  // TODO: 临时禁用以排查崩溃
     // 下行自然小调音阶：G5 → E5 → C5 → A4 → E4 → C4
     const uint32_t freqs[] = {784, 659, 523, 440, 330, 262};
     const uint32_t durs[]  = { 70,  75,  85, 100, 120, 150};
@@ -137,30 +154,48 @@ void sfxGameOver() {
 
 void sfxShoot() {
     uint16_t* buf = Get_GameAudio_Buf_L();
+    if (!buf) return;
+    Begin_GameAudio_Prepare();
     int n = renderSquareWave(buf, 1500, 40);
     if (n > 0) {
         uint16_t* bufR = Get_GameAudio_Buf_R();
-        memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
-        Start_GameAudio(n);
+        if (bufR) {
+            memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
+            Start_GameAudio(n);
+        }
+    } else {
+        End_GameAudio_Prepare();
     }
 }
 
 void sfxBounce() {
     uint16_t* buf = Get_GameAudio_Buf_L();
+    if (!buf) return;
+    Begin_GameAudio_Prepare();
     int n = renderSquareWave(buf, 660, 20);
     if (n > 0) {
         uint16_t* bufR = Get_GameAudio_Buf_R();
-        memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
-        Start_GameAudio(n);
+        if (bufR) {
+            memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
+            Start_GameAudio(n);
+        }
+    } else {
+        End_GameAudio_Prepare();
     }
 }
 
 void sfxSelect() {
     uint16_t* buf = Get_GameAudio_Buf_L();
+    if (!buf) return;
+    Begin_GameAudio_Prepare();
     int n = renderSquareWave(buf, 1000, 50);
     if (n > 0) {
         uint16_t* bufR = Get_GameAudio_Buf_R();
-        memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
-        Start_GameAudio(n);
+        if (bufR) {
+            memcpy((void*)bufR, (void*)buf, n * sizeof(uint16_t));
+            Start_GameAudio(n);
+        }
+    } else {
+        End_GameAudio_Prepare();
     }
 }

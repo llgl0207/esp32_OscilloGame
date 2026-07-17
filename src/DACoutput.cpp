@@ -50,6 +50,7 @@ static volatile uint16_t *game_audio_R = NULL;
 static volatile int  game_audio_count = 0;    // 有效样本数
 static volatile int  game_audio_idx = 0;      // ISR 当前读取位置
 static volatile bool game_audio_active = false;
+static volatile bool game_audio_preparing = false; // 任务正在写入缓冲区，ISR 暂停读取
 
 // 初始化音频缓冲区
 void Init_Audio_Buffers() {
@@ -161,6 +162,15 @@ void Start_GameAudio(int sample_count) {
     game_audio_count = sample_count;
     game_audio_idx = 0;
     game_audio_active = true;
+    game_audio_preparing = false;  // 缓冲区写入完毕，允许 ISR 读取
+}
+
+void Begin_GameAudio_Prepare() {
+    game_audio_preparing = true;   // 暂停 ISR 读取，防止读到半写入的数据
+}
+
+void End_GameAudio_Prepare() {
+    game_audio_preparing = false;  // 准备取消，恢复 ISR 读取
 }
 
 bool Is_GameAudio_Finished() {
@@ -262,8 +272,8 @@ void IRAM_ATTR onTimer() {
       // 发送Y坐标到通道1
       sendDAC(DAC8554_BUFFER_WRITE | (1 << 1), outY);
 
-      // ---- 游戏音效：仅在有音效时输出到通道 2/3 (不干扰矢量显示) ----
-      if (game_audio_active && game_audio_idx < game_audio_count) {
+      // ---- 游戏音效：仅在有音效且不在准备中时输出 ----
+      if (game_audio_active && !game_audio_preparing && game_audio_idx < game_audio_count) {
           sendDAC(DAC8554_BUFFER_WRITE | (2 << 1), game_audio_L[game_audio_idx]);
           sendDAC(DAC8554_BUFFER_WRITE | (3 << 1), game_audio_R[game_audio_idx]);
           game_audio_idx++;

@@ -10,5 +10,10 @@
 			"path": "../../Arduino/esp32s3st7789IoT"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"Push-Location": true,
+			"&": true
+		}
+	}
 }
