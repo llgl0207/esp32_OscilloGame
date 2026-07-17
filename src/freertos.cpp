@@ -7,6 +7,7 @@
 #include "web_server.h"
 #include "ai_chat.h"
 #include "voice_control.h"
+#include "merge/merge_task.h"   // 迁移的串口对话模块
 #include <Arduino.h>
 #include <stdio.h>
 #include <vector>
@@ -1337,7 +1338,6 @@ static void guiTask(void* pvParameters) {
                 } else if (menu_index == 5) {
                     ui_state = UI_AI_CHAT;
                     last_menu_index = -1;
-                    AI_Chat_Start();
                     continue;
                 } else if (menu_index == 6) {
                     ui_state = UI_ABOUT;
@@ -2630,59 +2630,74 @@ static void guiTask(void* pvParameters) {
             updateWebUIStatus(status);
 
         } else if (ui_state == UI_AI_CHAT) {
-            // 进入 AI Chat 后的忽略按钮时间戳
-            static unsigned long ai_chat_enter_ms = 0;
-            static unsigned long ai_btn_down_ms = 0;   // 按钮按下时刻（用于长按检测）
-            // 持久化分行缓冲区（30行×36字节，覆盖~540字符的回复）
+            // ============================================================
+            // 新 AI Chat — 使用迁移链路（merge_task）
+            // 操作方式：
+            //   按住 <200ms 释放 → 退出
+            //   按住 ≥200ms → 自动开始录音 → 释放时停止录音+ASR+LLM
+            //   有回复时：轻触退出，编码器滚动文本
+            // ============================================================
+            static unsigned long ai_enter_ms = 0;
+            static unsigned long ai_btn_down_ms = 0;
+            static int  ai_last_btn = HIGH;            // 上一帧按钮状态（模块内部跟踪）
+            static bool ai_is_recording = false;        // 正在录音
+            static bool ai_reply_new = false;           // 有新回复
             static char ai_reply_lines[60][36];
             static int  ai_reply_line_count = 0;
-            static int  ai_reply_scroll = 0;           // 当前滚动到第几行
-            const int   AI_REPLY_MAX_VISIBLE = 6;       // 屏幕最多显示行数
-            static bool ai_reply_dirty = true;          // 需要重新分行
+            static int  ai_reply_scroll = 0;
+            const int   AI_REPLY_MAX_VISIBLE = 6;
+            static bool ai_reply_dirty = true;
 
             if (last_menu_index == -1) {
-                ai_chat_enter_ms = millis();
+                ai_enter_ms = millis();
+                Merge_Init();
+                ai_last_btn = btn_state;  // 同步当前按钮状态
+                ai_is_recording = false;
+                ai_reply_new = false;
+                ai_reply_line_count = 0;
+                ai_reply_scroll = 0;
                 ai_reply_dirty = true;
             }
 
-            // ---- 长按检测（按住时触发，不等释放）----
-            // 在 REPLY/DONE 阶段按住 500ms → 连续对话（直接开始录音）
-            static bool ai_long_press_triggered = false;
-            if (btn_state == LOW) {
-                unsigned long held_ms = millis() - ai_btn_down_ms;
-                bool is_reply_or_done = (ai_chat_phase == AI_PHASE_REPLY || ai_chat_phase == AI_PHASE_DONE);
-                if (held_ms >= 500 && !ai_long_press_triggered && is_reply_or_done) {
-                    ai_long_press_triggered = true;
-                    Serial.println("[AICHAT] Hold 500ms, continuing conversation (record while held)...");
-                    ai_continue_mode = true;
-                    AI_Chat_Stop();
-                    for (int w = 0; w < 25 && ai_chat_active; w++) vTaskDelay(pdMS_TO_TICKS(20));
-                    ai_reply_dirty = true;
-                    ai_reply_line_count = 0;
-                    ai_reply_scroll = 0;
-                    last_menu_index = -1;
-                    rebuild = true;
-                    AI_Chat_Start();
-                    continue;
-                }
-            } else {
-                ai_long_press_triggered = false;
-            }
-            // 记录按钮按下时刻（下降沿）
-            if (btn_state == LOW && last_btn_state == HIGH) {
+            // 使用模块内部跟踪的按钮状态，不依赖外部的 last_btn_state
+            int cur_btn = btn_state;  // btn_state 是每轮从 digitalRead(EN_S) 读取的
+
+            // ---- 检测下降沿（按下）----
+            if (cur_btn == LOW && ai_last_btn == HIGH) {
                 ai_btn_down_ms = millis();
+                Serial.printf("[AICHAT] DOWN at %lu\n", ai_btn_down_ms);
             }
 
-            // ---- 编码器：REPLY/DONE 阶段滚动文本，其余阶段退出 ----
-            if (enc_delta != 0 && (millis() - ai_chat_enter_ms > 500) && ai_chat_phase != AI_PHASE_RECORDING) {
-                if (ai_chat_phase == AI_PHASE_REPLY || ai_chat_phase == AI_PHASE_DONE) {
-                    // 滚动文本
-                    int max_scroll = max(0, ai_reply_line_count - AI_REPLY_MAX_VISIBLE);
-                    ai_reply_scroll = constrain(ai_reply_scroll - enc_delta, 0, max_scroll);
-                    last_menu_index = -1; // 强制重绘
-                } else {
-                    // 其他阶段 → 退出
-                    AI_Chat_Stop();
+            // ---- 按住期间 ≥200ms 自动开始录音 ----
+            if (cur_btn == LOW && !ai_is_recording && !merge_is_recording) {
+                unsigned long held_ms = millis() - ai_btn_down_ms;
+                if (held_ms >= 200 && merge_active) {
+                    Serial.printf("[AICHAT] LONG PRESS %lums -> start recording\n", held_ms);
+                    ai_is_recording = true;
+                    ai_reply_new = false;
+                    merge_llm_done = false;
+                    Merge_GuiStartRecord();
+                    last_menu_index = -1;
+                }
+            }
+
+            // ---- 检测上升沿（释放）----
+            if (cur_btn == HIGH && ai_last_btn == LOW) {
+                unsigned long hold_ms = millis() - ai_btn_down_ms;
+                Serial.printf("[AICHAT] UP after %lums (recording=%d merge_rec=%d)\n",
+                    hold_ms, ai_is_recording, merge_is_recording);
+
+                if (ai_is_recording || merge_is_recording) {
+                    // 释放 → 停止录音 + 触发 ASR+LLM
+                    Serial.println("[AICHAT] Stop recording + process");
+                    ai_is_recording = false;
+                    Merge_GuiStopRecord();
+                    last_menu_index = -1;
+                }
+                // 短按 <200ms → 退出
+                else if (hold_ms < 200 && (millis() - ai_enter_ms > 500)) {
+                    Serial.println("[AICHAT] Short press -> exit");
+                    Merge_Deinit();
                     ui_state = UI_MENU_MAIN;
                     menu_index = 5;
                     last_menu_index = -1;
@@ -2691,95 +2706,38 @@ static void guiTask(void* pvParameters) {
                 }
             }
 
-            // ---- 短按（释放时触发）：退出到主菜单 ----
-            // btn_pressed 是上升沿（释放），仅当按下的持续时间 < 500ms 才视为短按
-            if (btn_pressed && (millis() - ai_chat_enter_ms > 500)) {
-                unsigned long hold_ms = millis() - ai_btn_down_ms;
-                if (hold_ms < 500) {
-                    bool is_reply_or_done = (ai_chat_phase == AI_PHASE_REPLY || ai_chat_phase == AI_PHASE_DONE);
-                    if (is_reply_or_done || ai_chat_phase == AI_PHASE_ERROR) {
-                        AI_Chat_Stop();
-                        ui_state = UI_MENU_MAIN;
-                        menu_index = 5;
-                        last_menu_index = -1;
-                        rebuild = true;
-                        continue;
-                    }
-                }
-            }
+            // ---- 更新内部按钮状态跟踪 ----
+            ai_last_btn = cur_btn;
 
-            // ---- 检查语音动作 ----
-            if (voice_pending) {
-                VC_Action act = voice_action;
-                voice_pending = false;
-                voice_action = VC_NONE;
-                for (int wait_i = 0; wait_i < 25 && ai_chat_active; wait_i++) vTaskDelay(pdMS_TO_TICKS(20));
-                AI_Chat_Stop();
-                switch (act) {
-                    case VC_OPEN_MUSIC:
-                        ui_state = UI_MENU_MUSIC; menu_index = 0; Scan_Music_Files(); break;
-                    case VC_OPEN_VIDEO:
-                        ui_state = UI_MENU_VIDEO; menu_index = 0; Scan_Video_Files(); break;
-                    case VC_OPEN_GAMES:
-                        ui_state = UI_MENU_GAMES; menu_index = 0; break;
-                    case VC_OPEN_ONLINE:
-                        ui_state = UI_MENU_ONLINE; Network_Manager::startDiscovery(); menu_index = 0; break;
-                    case VC_OPEN_GAME_JOY:
-                        ui_state = UI_GAME_JOY; break;
-                    case VC_OPEN_AI_CHAT:
-                        break;
-                    case VC_OPEN_ABOUT:
-                        ui_state = UI_ABOUT; break;
-                    case VC_START_SNAKE:
-                        ui_state = UI_SNAKE; Init_Snake_Game(); break;
-                    case VC_START_BREAKOUT:
-                        ui_state = UI_BREAKOUT; Init_Breakout_Game(); break;
-                    case VC_START_FLAPPY:
-                        ui_state = UI_FLAPPY; Init_Flappy_Game(); break;
-                    case VC_START_RACING:
-                        ui_state = UI_RACING; Init_Racing_Game(); break;
-                    case VC_START_RUNTINY:
-                        ui_state = UI_RUNTINY; Init_RunTiny_Game(); break;
-                    case VC_START_TANK:
-                        ui_state = UI_TANK; Init_Tank_Game(0, true); break;
-                    case VC_BACK:
-                    case VC_EXIT:
-                    default:
-                        ui_state = UI_MENU_MAIN; menu_index = 5; break;
-                }
-                last_menu_index = -1;
-                rebuild = true;
-                continue;
-            }
-
-            // ---- 新回复到达时重新分行 ----
-            if (ai_chat_dirty && (ai_chat_phase == AI_PHASE_REPLY || ai_chat_phase == AI_PHASE_DONE)) {
+            // ---- LLM 完成 → 分行准备显示 ----
+            if (merge_llm_done && !ai_reply_new && merge_last_reply.length() > 0) {
+                ai_reply_new = true;
                 ai_reply_dirty = true;
+                merge_llm_done = false;
+                last_menu_index = -1;  // 强制重绘
             }
 
-            // ---- 渲染 AI Chat 屏幕 ----
-            if (rebuild || ai_chat_dirty || last_menu_index == -1) {
+            // ---- 编码器滚动文本 ----
+            if (enc_delta != 0 && ai_reply_new && !ai_is_recording && !merge_is_recording) {
+                int max_scroll = max(0, ai_reply_line_count - AI_REPLY_MAX_VISIBLE);
+                ai_reply_scroll = constrain(ai_reply_scroll - enc_delta, 0, max_scroll);
+                last_menu_index = -1;
+            }
+
+            // ---- 渲染 ----
+            if (rebuild || last_menu_index == -1) {
                 DRAW_Clear();
                 DRAW_AddRect(0, 0, 2047, 2047);
 
-                if (ai_chat_phase == AI_PHASE_WAITING) {
-                    DRAW_AddString("AI CHAT", 0, 600, 1800, 30, 30);
-                    DRAW_AddString(ai_chat_display_text, 0, 100, 1200, 22, 22);
-                    DRAW_AddString("PRESS ENTER", 0, 300, 600, 20, 20);
-                } else if (ai_chat_phase == AI_PHASE_RECORDING) {
-                    DRAW_AddString(ai_chat_display_text, 0, 100, 1600, 25, 25);
-                    static int dot_cnt = 0;
-                    dot_cnt = (dot_cnt + 1) % 40;
-                    char dots[8] = ".";
-                    for (int i = 0; i < (dot_cnt / 10) + 1 && i < 4; i++) dots[i] = '.';
-                    dots[(dot_cnt / 10) + 1] = '\0';
-                    DRAW_AddString(dots, 0, 1200, 1600, 25, 25);
-                } else if (ai_chat_phase == AI_PHASE_REPLY || ai_chat_phase == AI_PHASE_DONE) {
-                    // ---- 新回复时重新分行到持久缓冲区 ----
+                if (merge_is_recording) {
+                    // 录音中
+                    DRAW_AddString("RECORDING...", 0, 500, 1600, 30, 30);
+                } else if (ai_reply_new && merge_last_reply.length() > 0) {
+                    // ---- LLM 回复 ----
                     if (ai_reply_dirty) {
                         ai_reply_line_count = 0;
                         ai_reply_scroll = 0;
-                        String txt = ai_chat_display_text;
+                        String txt = merge_last_reply;
                         int idx = 0;
                         while (idx < (int)txt.length() && ai_reply_line_count < 60) {
                             int end = idx + 18;
@@ -2801,35 +2759,22 @@ static void guiTask(void* pvParameters) {
                         ai_reply_dirty = false;
                     }
 
-                    // ---- 绘制可见行 ----
+                    // 显示当前滚动位置的内容
                     int32_t y = 1700;
                     int end_line = min(ai_reply_line_count, ai_reply_scroll + AI_REPLY_MAX_VISIBLE);
                     for (int i = ai_reply_scroll; i < end_line; i++) {
                         DRAW_AddString(ai_reply_lines[i], 0, 100, y, 22, 22);
                         y -= 220;
                     }
-
-                    // ---- 滚动指示器 ----
-                    if (ai_reply_line_count > AI_REPLY_MAX_VISIBLE) {
-                        int total_pages = ai_reply_line_count - AI_REPLY_MAX_VISIBLE + 1;
-                        int cur_page = ai_reply_scroll + 1;
-                        char hint[16];
-                        snprintf(hint, sizeof(hint), "[%d/%d]", cur_page, total_pages);
-                        DRAW_AddString(hint, 0, 850, 250, 14, 14);
-                    }
-
-                    // ---- 底部提示 ----
-                    DRAW_AddString("TAP=Exit  HOLD=Record again", 0, 50, 100, 12, 12);
-                } else if (ai_chat_phase == AI_PHASE_ERROR) {
-                    DRAW_AddString("ERROR", 0, 700, 1800, 20, 20);
-                    DRAW_AddString(ai_chat_display_text, 0, 200, 1200, 18, 18);
-                } else {
-                    DRAW_AddString("AI CHAT", 0, 600, 1800, 30, 30);
-                    DRAW_AddString(ai_chat_display_text, 0, 300, 1000, 22, 22);
+                } else if (ai_reply_new && merge_last_reply.length() == 0) {
+                    // LLM 返回空
+                    DRAW_AddString("(no reply)", 0, 500, 1200, 22, 22);
+                } else if (!ai_reply_new && !merge_is_recording) {
+                    // 初始状态
+                    DRAW_AddString("AI CHAT", 0, 600, 1800, 28, 28);
                 }
 
-                ai_chat_dirty = false;
-                updateWebUIStatus(String("AI CHAT\n") + ai_chat_display_text);
+                updateWebUIStatus(String("AI CHAT\n") + merge_last_reply);
                 last_menu_index = 0;
             }
 

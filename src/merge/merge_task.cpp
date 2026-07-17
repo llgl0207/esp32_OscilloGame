@@ -55,12 +55,21 @@ extern void initWebServer();
 volatile bool merge_active = false;
 String        merge_asr_result = "";
 String        merge_last_reply = "";
-String        merge_user_suffix = "";  // 默认无后缀
+String        merge_user_suffix = "(you can only answer in English)";
+
+// GuiTask 可轮询的标志
+volatile bool merge_is_recording = false;
+volatile bool merge_asr_done = false;
+volatile bool merge_llm_done = false;
 
 // ============================================================
 // 内部状态
 // ============================================================
 static TaskHandle_t s_mergeTaskHandle = NULL;
+static TaskHandle_t s_workerTaskHandle = NULL;  // 后台 ASR/LLM 工作线程
+
+// 工作线程触发标志
+static volatile bool s_worker_trigger = false;
 
 // 音频
 static int16_t*      audio_buffer    = nullptr;
@@ -87,6 +96,7 @@ static TaskHandle_t s_recordTaskHandle = NULL;
 static bool     initI2S();
 static void     deinitI2S();
 static void     record_task_func(void* pvParameters);
+static void     worker_task_func(void* pvParameters);  // 后台 ASR+LLM 工作线程
 static bool     wifi_connect_sta();
 static void     wifi_disconnect_sta();
 static bool     refreshToken();
@@ -327,6 +337,52 @@ static void record_task_func(void* pvParameters) {
     vTaskDelete(NULL);
 }
 
+// ---- 后台工作线程（在 Core 0 上执行 ASR + LLM，不阻塞 GuiTask）----
+static void worker_task_func(void* pvParameters) {
+    Serial.println("[MERGE] Worker task started");
+    while (merge_active) {
+        if (s_worker_trigger) {
+            s_worker_trigger = false;
+
+            // 1. ASR
+            merge_asr_done = false;
+            String asr_result = recognizeAudio();
+            if (asr_result.length() > 0 && !asr_result.startsWith("__")) {
+                merge_asr_result = asr_result;
+                Serial.printf("[MERGE] ASR result: \"%s\"\n", asr_result.c_str());
+            } else {
+                Serial.printf("[MERGE] ASR failed: %s\n", asr_result.c_str());
+                merge_asr_result = "";
+                merge_llm_done = true;  // 标记完成（空结果）
+                continue;
+            }
+            merge_asr_done = true;
+
+            // 2. LLM（将 ASR 结果送入）
+            String text = merge_asr_result;
+            if (merge_user_suffix.length() > 0) {
+                text += " " + merge_user_suffix;
+            }
+            Serial.println("[MERGE] Calling DeepSeek LLM...");
+            String reply = s_llm.chat(text);
+            s_llm.resetHistory();
+
+            if (reply.length() > 0 && !reply.startsWith("__")) {
+                merge_last_reply = reply;
+                Serial.printf("[MERGE] LLM reply: \"%s\"\n", reply.c_str());
+            } else {
+                Serial.printf("[MERGE] LLM failed: %s\n", reply.c_str());
+                merge_last_reply = "(LLM failed)";
+            }
+            merge_llm_done = true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    Serial.println("[MERGE] Worker task exit");
+    s_workerTaskHandle = NULL;
+    vTaskDelete(NULL);
+}
+
 // ============================================================
 // 公共接口实现
 // ============================================================
@@ -387,9 +443,24 @@ void Merge_Init() {
     merge_active = true;
     merge_asr_result = "";
     merge_last_reply = "";
-    merge_user_suffix = "(you can only answer in English, do not include any non-ASCII Characters)";  // 默认持久提示词
+    merge_user_suffix = "(you can only answer in English, do not include any non-ASCII Characters)";
+    merge_is_recording = false;
+    merge_asr_done = false;
+    merge_llm_done = false;
+    s_worker_trigger = false;
     audio_samples = 0;
     is_recording = false;
+
+    // 启动后台工作线程（Core 0，执行 ASR + LLM）
+    xTaskCreatePinnedToCore(
+        worker_task_func,
+        "MergeWorkerTask",
+        8192,
+        NULL,
+        1,
+        &s_workerTaskHandle,
+        0
+    );
 
     Serial.println("===== MERGE MODE: READY =====");
     Serial.println("Commands: .s.=record  .e.=ASR  .l.=LLM  .u[text]  .dis.=exit");
@@ -400,6 +471,12 @@ void Merge_Deinit() {
 
     merge_active = false;
     is_recording = false;
+
+    // 等待工作线程退出
+    unsigned long t0 = millis();
+    while (s_workerTaskHandle != NULL && millis() - t0 < 2000) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 
     // 释放 I2S
     deinitI2S();
@@ -421,6 +498,63 @@ void Merge_Deinit() {
     asr_token = "";
 
     Serial.println("===== MERGE MODE: OFF =====");
+}
+
+// ============================================================
+// GuiTask 非阻塞接口
+// ============================================================
+void Merge_GuiStartRecord() {
+    if (!merge_active || !audio_buffer) {
+        Serial.println("[MERGE] Not initialized");
+        return;
+    }
+    audio_samples = 0;
+    is_recording = true;
+    merge_is_recording = true;
+    merge_asr_done = false;
+    merge_llm_done = false;
+
+    // 创建录音任务（Core 1，低优先级）
+    xTaskCreatePinnedToCore(
+        record_task_func,
+        "MergeRecordTask",
+        2048,
+        NULL,
+        1,
+        &s_recordTaskHandle,
+        1
+    );
+    Serial.println("[MERGE] Recording started...");
+}
+
+void Merge_GuiStopRecord() {
+    if (!is_recording) {
+        Serial.println("[MERGE] Not recording");
+        return;
+    }
+    is_recording = false;
+    merge_is_recording = false;
+    // 等待录音任务退出
+    unsigned long t0 = millis();
+    while (s_recordTaskHandle != NULL && millis() - t0 < 2000) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    Serial.printf("[MERGE] Recording done: %.1fs (%zu samples)\n",
+                  (float)audio_samples / SAMPLE_RATE, audio_samples);
+
+    if (audio_samples >= SAMPLE_RATE / 4) {
+        // 触发后台工作线程执行 ASR + LLM
+        s_worker_trigger = true;
+        Serial.println("[MERGE] Worker triggered for ASR+LLM");
+    } else {
+        Serial.println("[MERGE] Audio too short, skipped");
+        merge_llm_done = true;  // 标记完成（无结果）
+    }
+}
+
+void Merge_GuiPoll() {
+    // GuiTask 在循环中调用此函数消费完成标志
+    // 目前标志直接由 freertos.cpp 读取，此函数预留用于扩展
 }
 
 void Merge_StartRecording() {

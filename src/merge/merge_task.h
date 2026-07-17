@@ -24,6 +24,11 @@ extern String        merge_asr_result;  // 最近一次 ASR 识别结果
 extern String        merge_last_reply;  // 最近一次 LLM 回复
 extern String        merge_user_suffix; // 始终附加在用户文本后的持久提示词
 
+// GuiTask 可轮询的状态标志
+extern volatile bool merge_is_recording;    // 正在录音
+extern volatile bool merge_asr_done;        // ASR 已完成（GuiTask 消费后清零）
+extern volatile bool merge_llm_done;        // LLM 已完成（GuiTask 消费后清零）
+
 // ---- 初始化/反初始化 ----
 void Merge_Init();      // 初始化模块（I2S mic, ASR token, DeepSeek client）
 void Merge_Deinit();    // 反初始化（释放资源）
@@ -31,12 +36,10 @@ void Merge_Deinit();    // 反初始化（释放资源）
 // ---- 串口指令处理 ----
 void Merge_HandleCommand(const String& cmd);
 
-// ---- 录音 ----
-void Merge_StartRecording();
-void Merge_StopRecording();
-
-// ---- ASR ----
-void Merge_RunASR();
+// ---- GuiTask 接口（非阻塞）----
+void Merge_GuiStartRecord();   // 开始录音（非阻塞）
+void Merge_GuiStopRecord();    // 停止录音 → 自动 ASR + LLM（在后台执行）
+void Merge_GuiPoll();          // 在 GuiTask 循环中调用，消费完成标志
 
 // ---- LLM ----
 void Merge_RunLLM(const String& text);
