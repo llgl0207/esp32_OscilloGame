@@ -30,14 +30,14 @@ extern const uint8_t GAMEPAD_SLAVE_MAC[6];
 #define GAMEPAD_TIMEOUT_MS 500  // 手柄超时判定 (ms)
 
 typedef struct __attribute__((packed)) {
-    uint16_t joy1X;     // 左摇杆 X (0-4095)
-    uint16_t joy1Y;     // 左摇杆 Y
-    uint16_t joy2X;     // 右摇杆 X
-    uint16_t joy2Y;     // 右摇杆 Y
-    uint8_t  btnA;      // 按钮 A (0/1)
-    uint8_t  btnB;      // 按钮 B (0/1)
-    uint8_t  btn1SW;    // 摇杆1 按下
-    uint8_t  btn2SW;    // 摇杆2 按下
+    uint16_t joy1X;     // 左摇杆 X (0-4095); 值小=左/上, 值大=右/下
+    uint16_t joy1Y;     // 左摇杆 Y (0-4095); 值小=左/上, 值大=右/下
+    uint16_t joy2X;     // 右摇杆 X (0-4095); 值小=左/上, 值大=右/下
+    uint16_t joy2Y;     // 右摇杆 Y (0-4095); 值小=左/上, 值大=右/下
+    uint8_t  btnA;      // 按钮 A (0=松开, 1=按下)
+    uint8_t  btnB;      // 按钮 B (0=松开, 1=按下)
+    uint8_t  btn1SW;    // 摇杆1 按下 (0/1)
+    uint8_t  btn2SW;    // 摇杆2 按下 (0/1)
     int16_t  encDelta;  // 编码器增量 (可选)
     uint8_t  dirPad;    // 方向键: 0=上 1=下 2=左 3=右 255=无
 } GamepadData;
