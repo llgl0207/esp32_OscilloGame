@@ -2715,6 +2715,52 @@ static void guiTask(void* pvParameters) {
                 ai_reply_dirty = true;
                 merge_llm_done = false;
                 last_menu_index = -1;  // 强制重绘
+
+                // ---- 如果有语音动作，执行 UI 路由 ----
+                if (voice_pending) {
+                    VC_Action act = voice_action;
+                    voice_pending = false;
+                    voice_action = VC_NONE;
+
+                    // 先退出 merge 模式
+                    Merge_Deinit();
+
+                    // 等待 merge 完全退出
+                    unsigned long tw = millis();
+                    while (merge_active && millis() - tw < 1000) vTaskDelay(pdMS_TO_TICKS(10));
+
+                    // 执行动作路由
+                    switch (act) {
+                        case VC_OPEN_MUSIC:
+                            ui_state = UI_MENU_MUSIC; menu_index = 0; continue;
+                        case VC_OPEN_VIDEO:
+                            ui_state = UI_MENU_VIDEO; menu_index = 0; continue;
+                        case VC_OPEN_GAMES:
+                            ui_state = UI_MENU_GAMES; menu_index = 0; continue;
+                        case VC_OPEN_ONLINE:
+                            ui_state = UI_MENU_ONLINE; Network_Manager::startDiscovery(); menu_index = 0; continue;
+                        case VC_OPEN_GAME_JOY:
+                            ui_state = UI_GAME_JOY; continue;
+                        case VC_OPEN_ABOUT:
+                            ui_state = UI_ABOUT; continue;
+                        case VC_START_SNAKE:
+                            ui_state = UI_SNAKE; Init_Snake_Game(); continue;
+                        case VC_START_BREAKOUT:
+                            ui_state = UI_BREAKOUT; Init_Breakout_Game(); continue;
+                        case VC_START_FLAPPY:
+                            ui_state = UI_FLAPPY; Init_Flappy_Game(); continue;
+                        case VC_START_RACING:
+                            ui_state = UI_RACING; Init_Racing_Game(); continue;
+                        case VC_START_RUNTINY:
+                            ui_state = UI_RUNTINY; Init_RunTiny_Game(); continue;
+                        case VC_START_TANK:
+                            ui_state = UI_TANK; Init_Tank_Game(0, true); continue;
+                        case VC_BACK:
+                        case VC_EXIT:
+                        default:
+                            ui_state = UI_MENU_MAIN; menu_index = 5; continue;
+                    }
+                }
             }
 
             // ---- 编码器滚动文本 ----

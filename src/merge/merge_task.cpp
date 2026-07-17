@@ -21,6 +21,7 @@
 
 // 引入 Network_Manager 和 initWebServer 以在 .dis. 时恢复
 #include "network_manager.h"
+#include "voice_control.h"
 extern void initWebServer();
 
 // ============================================================
@@ -47,7 +48,26 @@ extern void initWebServer();
 
 // ---- DeepSeek ----
 // 凭据定义在 ai_config.h 中（MERGE_DEEPSEEK_API_KEY）
-#define SYSTEM_PROMPT    "You are a helpful chat assistant. You can answer in Chinese by default. Don't send Emoji. Keep responses short and natural."
+#define SYSTEM_PROMPT \
+    "You control an ESP32 oscilloscope game console called OscilloGame. " \
+    "The console uses a vector oscilloscope display (XY mode) to draw graphics. " \
+    "It can play music from SD card, play video via oscilloscope output, " \
+    "and run several games: Snake, Breakout, Flappy Bird, Racing, RunTiny, Tank. " \
+    "It also has online multiplayer (ESP-NOW), Bluetooth gamepad support, " \
+    "and a web remote control interface.\n" \
+    "You MUST reply STRICTLY in ENGLISH ONLY. " \
+    "ABSOLUTELY NEVER use Chinese or any non-ASCII characters. " \
+    "Keep responses short and natural.\n" \
+    "CRITICAL: NEVER wrap your reply in quotes, backticks, code blocks, " \
+    "or any formatting markers. Return ONLY the raw sentence text.\n" \
+    "For navigation actions, reply with JSON (no markdown):\n" \
+    "{\"reply\":\"...\",\"action\":\"action_name\"}\n" \
+    "The 'reply' text will be displayed on the oscilloscope. " \
+    "The 'action' tells the system to navigate. " \
+    "Actions: open_music, open_video, open_games, open_online, " \
+    "open_game_joy, open_about, " \
+    "start_snake, start_breakout, start_flappy, start_racing, " \
+    "start_runtiny, start_tank, back"
 
 // ============================================================
 // 模块状态
@@ -368,8 +388,18 @@ static void worker_task_func(void* pvParameters) {
             s_llm.resetHistory();
 
             if (reply.length() > 0 && !reply.startsWith("__")) {
-                merge_last_reply = reply;
-                Serial.printf("[MERGE] LLM reply: \"%s\"\n", reply.c_str());
+                // 先解析动作（VC_ParseReply 会设置 voice_pending 和 voice_action）
+                String display = VC_ParseReply(reply);
+                if (voice_pending) {
+                    // 有动作：显示 reply 文本，动作由 GuiTask 消费
+                    merge_last_reply = display;
+                    Serial.printf("[MERGE] LLM reply+action: \"%s\" (action=%d)\n",
+                        display.c_str(), (int)voice_action);
+                } else {
+                    // 纯文本
+                    merge_last_reply = reply;
+                    Serial.printf("[MERGE] LLM reply: \"%s\"\n", reply.c_str());
+                }
             } else {
                 Serial.printf("[MERGE] LLM failed: %s\n", reply.c_str());
                 merge_last_reply = "(LLM failed)";
