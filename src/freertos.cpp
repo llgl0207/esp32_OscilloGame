@@ -8,6 +8,7 @@
 #include "ai_chat.h"
 #include "voice_control.h"
 #include "merge/merge_task.h"   // 迁移的串口对话模块
+#include "game_audio.h"         // 游戏音效模块
 #include <Arduino.h>
 #include <stdio.h>
 #include <vector>
@@ -355,6 +356,12 @@ void Update_Snake_Game(void) {
             // 新食物
             snake_food.x = rand() % SNAKE_GRID_SIZE;
             snake_food.y = rand() % SNAKE_GRID_SIZE;
+            sfxEat();  // 吃食物音效
+        }
+
+        // 检查游戏结束
+        if(game_over) {
+            sfxGameOver();  // 游戏结束音效
         }
     }
 }
@@ -429,6 +436,8 @@ void Update_Breakout_Game(int16_t encoder_delta) {
                 
                 // 添加一些挡板速度影响 (可选)
                 // brk_ball.vx += encoder_delta * 2;
+                
+                sfxBounce();  // 挡板反弹音效
             }
         }
     }
@@ -438,12 +447,14 @@ void Update_Breakout_Game(int16_t encoder_delta) {
         brk_lives--;
         if(brk_lives <= 0) {
             brk_game_over = 1; // 输
+            sfxGameOver();  // 游戏结束音效
         } else {
             // 重置球
             brk_ball.x = 1024;
             brk_ball.y = 750;
             brk_ball.vx = 22;
             brk_ball.vy = 22;
+            sfxHit();  // 掉命音效
         }
     }
 
@@ -464,8 +475,11 @@ void Update_Breakout_Game(int16_t encoder_delta) {
                 // 简单反弹 (反转 Y) - 可以改进
                 brk_ball.vy = -brk_ball.vy;
                 
+                sfxHit();  // 击中砖块音效
+                
                 if(brk_brick_count <= 0) {
                     brk_game_over = 2; // 赢
+                    sfxGameOver();  // 胜利音效
                 }
             }
         }
@@ -495,6 +509,7 @@ void Update_Flappy_Game(int jump_requested) {
     // 物理
     if(jump_requested) {
         flp_player.vy = FLP_JUMP_FORCE;
+        sfxJump();  // 跳跃音效
     }
     
     flp_player.y += flp_player.vy;
@@ -541,6 +556,7 @@ void Update_Flappy_Game(int jump_requested) {
             // 垂直检查 (击中顶部或底部)
             if(flp_player.y + FLP_PLAYER_R > gap_top || flp_player.y - FLP_PLAYER_R < gap_bot) {
                 flp_game_over = 1;
+                sfxGameOver();  // 游戏结束音效
             }
         }
         
@@ -548,6 +564,7 @@ void Update_Flappy_Game(int jump_requested) {
         if(!flp_obstacles[i].passed && flp_obstacles[i].x + ow < FLP_PLAYER_X - FLP_PLAYER_R) {
             flp_score++;
             flp_obstacles[i].passed = 1;
+            sfxScore();  // 得分音效
         }
     }
 }
@@ -601,12 +618,14 @@ void Update_Racing_Game(int16_t encoder_delta) {
            100 < race_obstacles[i].y + RACE_OBSTACLE_H &&
            100 + RACE_CAR_H > race_obstacles[i].y) {
             race_game_over = 1;
+            sfxGameOver();  // 游戏结束音效
         }
         
         // 得分
         if(!race_obstacles[i].passed && race_obstacles[i].y + RACE_OBSTACLE_H < 100) {
             race_score++;
             race_obstacles[i].passed = 1;
+            sfxScore();  // 得分音效
         }
     }
 }
@@ -635,6 +654,7 @@ void Update_RunTiny_Game(int jump_requested) {
     if(jump_requested && !run_player.jumping) {
         run_player.vy = RUN_JUMP_FORCE;
         run_player.jumping = 1;
+        sfxJump();  // 跳跃音效
     }
     
     run_player.y += run_player.vy;
@@ -680,12 +700,14 @@ void Update_RunTiny_Game(int jump_requested) {
            run_obstacles[i].x + RUN_OBSTACLE_W > RUN_PLAYER_X &&
            run_player.y < RUN_GROUND_Y + RUN_OBSTACLE_H) { // 简单高度检查
             run_game_over = 1;
+            sfxGameOver();  // 游戏结束音效
         }
         
         // 得分
         if(!run_obstacles[i].passed && run_obstacles[i].x + RUN_OBSTACLE_W < RUN_PLAYER_X) {
             run_score++;
             run_obstacles[i].passed = 1;
+            sfxScore();  // 得分音效
         }
     }
 }
@@ -929,6 +951,7 @@ void Update_Tank_Game(void) {
                 tank_bullets[i].vy = TANK_BULLET_SPEED * sin(my_tank.angle);
                 tank_bullets[i].bounce_count = 0;
                 bullet_frames[i] = 0;
+                sfxShoot();  // 射击音效
                 break;
             }
         }
@@ -941,7 +964,8 @@ void Update_Tank_Game(void) {
             tank_bullets[i].y += tank_bullets[i].vy;
             
             // 检查碰撞 (反弹)
-            Check_Bullet_Collision(tank_bullets[i].x, tank_bullets[i].y, tank_bullets[i].vx, tank_bullets[i].vy, tank_bullets[i].bounce_count);
+            bool bounced = Check_Bullet_Collision(tank_bullets[i].x, tank_bullets[i].y, tank_bullets[i].vx, tank_bullets[i].vy, tank_bullets[i].bounce_count);
+            if (bounced) sfxBounce();  // 反弹音效
             
             if(tank_bullets[i].bounce_count > 5) {
                 tank_bullets[i].active = false;
@@ -957,6 +981,7 @@ void Update_Tank_Game(void) {
             float dy = tank_bullets[i].y - my_tank.y;
             if(dx*dx + dy*dy < 60*60) { // 坦克半径约 60 (从 30 增加)
                 tank_game_over = 1; // 我死了
+                sfxGameOver();  // 游戏结束音效
             }
         }
     }
@@ -970,6 +995,7 @@ void Update_Tank_Game(void) {
                  float dy = remoteData.bullets[i].y - my_tank.y;
                  if(dx*dx + dy*dy < 60*60) {
                      tank_game_over = 1;
+                     sfxGameOver();  // 游戏结束音效
                  }
             }
         }
@@ -1356,6 +1382,7 @@ static void guiTask(void* pvParameters) {
             
             // 选择
             if (btn_pressed) {
+                sfxSelect();  // 菜单确认音效
                 if (menu_index == 0) {
                     ui_state = UI_MENU_MUSIC;
                     Scan_Music_Files();
@@ -1568,6 +1595,7 @@ static void guiTask(void* pvParameters) {
             
             // 选择
             if (btn_pressed) {
+                sfxSelect();  // 菜单确认音效
                 if (menu_index == 0) {
                     ui_state = UI_SNAKE;
                     Init_Snake_Game();
@@ -2943,6 +2971,9 @@ static void guiTask(void* pvParameters) {
         // 更新动画并渲染
         DRAW_Update();
         DRAW_Render();
+
+        // 更新音效状态 (检查是否有到期音效)
+        gameAudioUpdate();
 
         vTaskDelay(pdMS_TO_TICKS(40)); // 25Hz 更新率
     }

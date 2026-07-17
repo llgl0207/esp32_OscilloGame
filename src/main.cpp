@@ -2,8 +2,8 @@
 #include <WiFi.h>
 #include "pins.h"
 
-// --- ESP-NOW 无线手柄 MAC 地址 ---//84:0D:8E:BF:C9:3D
-extern const uint8_t GAMEPAD_SLAVE_MAC[6] = {0x84, 0x0D, 0x8E, 0xBF, 0xC9, 0x3D};
+// --- ESP-NOW 无线手柄 MAC 地址 ---//B4:E6:2D:47:CA:BE
+extern const uint8_t GAMEPAD_SLAVE_MAC[6] = {0xB4, 0xE6, 0x2D, 0x47, 0xCA, 0xBE};
 #include "freertos.h"
 #include "DACoutput.h"
 #include "vector_draw.h"

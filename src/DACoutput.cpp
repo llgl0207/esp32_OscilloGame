@@ -43,6 +43,14 @@ volatile int play_idx = 0;
 
 volatile int player_mode = 0; // 0: 矢量模式, 1: 音频模式, 2: 视频模式
 
+// ---- 游戏音效缓冲 (矢量模式下与 XY 同时输出到 DAC 通道 2/3) ----
+#define GAME_AUDIO_BUF_SIZE 65536  // 65536 样本 @80kHz ≈ 820ms, 256KB PSRAM
+static volatile uint16_t *game_audio_L = NULL;
+static volatile uint16_t *game_audio_R = NULL;
+static volatile int  game_audio_count = 0;    // 有效样本数
+static volatile int  game_audio_idx = 0;      // ISR 当前读取位置
+static volatile bool game_audio_active = false;
+
 // 初始化音频缓冲区
 void Init_Audio_Buffers() {
     if(bufA_L == NULL) {
@@ -127,6 +135,40 @@ void Set_Player_Mode(int mode) {
     } else {
         setDACFreq(80000); // 恢复矢量频率
     }
+}
+
+// ---- 游戏音效缓冲接口 ----
+void Init_GameAudio_Buffer() {
+    if (game_audio_L == NULL) {
+        game_audio_L = (volatile uint16_t*)ps_malloc(GAME_AUDIO_BUF_SIZE * sizeof(uint16_t));
+        game_audio_R = (volatile uint16_t*)ps_malloc(GAME_AUDIO_BUF_SIZE * sizeof(uint16_t));
+        if (!game_audio_L || !game_audio_R) {
+            Serial.println("Game audio PSRAM alloc failed!");
+        } else {
+            Serial.printf("Game audio buffer: %d samples (PSRAM)\n", GAME_AUDIO_BUF_SIZE);
+        }
+    }
+    game_audio_count = 0;
+    game_audio_idx = 0;
+    game_audio_active = false;
+}
+
+uint16_t* Get_GameAudio_Buf_L() { return (uint16_t*)game_audio_L; }
+uint16_t* Get_GameAudio_Buf_R() { return (uint16_t*)game_audio_R; }
+
+void Start_GameAudio(int sample_count) {
+    if (sample_count > GAME_AUDIO_BUF_SIZE) sample_count = GAME_AUDIO_BUF_SIZE;
+    game_audio_count = sample_count;
+    game_audio_idx = 0;
+    game_audio_active = true;
+}
+
+bool Is_GameAudio_Finished() {
+    return !game_audio_active;
+}
+
+int Get_GameAudio_MaxSamples() {
+    return GAME_AUDIO_BUF_SIZE;
 }
 
 // 优化的DAC8554发送函数
@@ -220,6 +262,16 @@ void IRAM_ATTR onTimer() {
       // 发送Y坐标到通道1
       sendDAC(DAC8554_BUFFER_WRITE | (1 << 1), outY);
 
+      // ---- 游戏音效：仅在有音效时输出到通道 2/3 (不干扰矢量显示) ----
+      if (game_audio_active && game_audio_idx < game_audio_count) {
+          sendDAC(DAC8554_BUFFER_WRITE | (2 << 1), game_audio_L[game_audio_idx]);
+          sendDAC(DAC8554_BUFFER_WRITE | (3 << 1), game_audio_R[game_audio_idx]);
+          game_audio_idx++;
+          if (game_audio_idx >= game_audio_count) {
+              game_audio_active = false;  // 播放完毕
+          }
+      }
+
       // 脉冲LDAC引脚更新输出
       GPIO.out_w1tc = ldacMask; // 置低
       GPIO.out_w1ts = ldacMask; // 置高
@@ -251,6 +303,9 @@ void initDACoutput() {
   
   // 初始化音频缓冲区（PSRAM）
   Init_Audio_Buffers();
+
+  // 初始化游戏音效缓冲区（PSRAM）
+  Init_GameAudio_Buffer();
 
   // 初始化定时器0
   // 使用80分频 -> 1MHz（1微秒）
